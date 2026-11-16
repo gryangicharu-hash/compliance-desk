@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block title %}Not allowed{% endblock %}
+{% block content %}
+<section class="card"><h1>Your role can't open this page</h1>
+<p class="muted">Some information is limited to particular roles, for example to prevent tipping-off. Ask your compliance officer if you need access.</p>
+<p><a href="{% url 'home' %}">Back to the overview</a></p></section>
+{% endblock %}

@@ -1,0 +1,5 @@
+# Web application dependencies (the engine itself only needs `cryptography`).
+# Ranges for now; pin exact versions with a lock file before go-live.
+Django>=5.2,<5.3          # 5.2 is a long-term support release
+psycopg[binary]>=3.2,<3.3
+cryptography>=42

@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% block title %}{{ m.name }} · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row">
+  <div><span class="mono muted">{{ m.member_no }} · joined {{ m.joined_on|date:"d M Y" }}</span><h1>{{ m.name }}</h1>
+    <p>{% if ra %}<span class="pill r-{{ ra.rating }}">{{ ra.rating|title }} risk</span>{% endif %}
+       <span class="pill s-{{ m.status }}">{{ m.get_status_display }}</span>
+       {% if ra %}<span class="pill" style="background:var(--info-soft);color:var(--info)">{{ ra.due_diligence|title }} due diligence</span>{% endif %}</p></div>
+  {% if can_approve %}<form method="post" action="{% url 'members:approve' m.member_no %}">{% csrf_token %}<button class="btn primary" type="submit">Approve relationship</button></form>{% endif %}
+</div>
+{% if m.status == 'pending_approval' and not can_approve %}<div class="msg warning">Waiting for senior management approval.{% if m.pep != 'none' %} PEPs need approval and a recorded source of wealth (reg. 22).{% endif %}</div>{% endif %}
+<div class="grid">
+  <section class="card"><h2>Profile</h2><dl class="kv">
+    <dt>Type</dt><dd>{{ m.get_member_type_display }}</dd>
+    <dt>{% if m.member_type == 'individual' %}ID number{% else %}Registration no.{% endif %}</dt><dd class="mono">{{ id_masked }}</dd>
+    <dt>Nationality / residence</dt><dd>{{ m.nationality }} / {{ m.residence }}</dd>
+    <dt>Occupation</dt><dd>{{ m.occupation }}</dd>
+    <dt>Employer</dt><dd>{{ m.employer|default:"—" }}{% if m.checkoff %} · check-off{% endif %}</dd>
+    <dt>Declared income</dt><dd>KES {{ m.declared_monthly_income|floatformat:"0g" }} a month</dd>
+    <dt>Source of funds</dt><dd>{{ m.source_of_funds|default:"Not recorded" }}</dd>
+    <dt>PEP status</dt><dd>{{ m.get_pep_display }}{% if m.pep_approved_by %} · approved by {{ m.pep_approved_by }} on {{ m.pep_approved_at|date:"d M Y" }}{% endif %}</dd>
+    {% if m.pep != 'none' %}<dt>Source of wealth</dt><dd>{{ m.source_of_wealth|default:"Not recorded" }}</dd>{% endif %}
+    <dt>Onboarding channel</dt><dd>{{ m.get_channel_display }}</dd>
+    <dt>ID expiry</dt><dd>{{ m.id_expiry|date:"d M Y"|default:"Not recorded" }}</dd>
+    <dt>KYC file</dt><dd>{% if m.kyc_complete %}Complete{% else %}Incomplete{% endif %}</dd>
+    <dt>Onboarded by</dt><dd>{{ m.onboarded_by|default:"—" }}</dd>
+  </dl>
+  {% if officials %}<h3>Officials and signatories</h3><ul class="small">{% for p in officials %}<li>{{ p.name }} · {{ p.role }}</li>{% endfor %}</ul>{% endif %}
+  {% if owners %}<h3>Beneficial owners</h3><ul class="small">{% for p in owners %}<li>{{ p.name }}{% if p.ownership_pct is not None %} · {{ p.ownership_pct|floatformat:"-2" }}%{% endif %}</li>{% endfor %}</ul>{% endif %}
+  </section>
+  <section class="card"><h2>Risk score{% if ra %}: {{ ra.score }} of 100{% endif %}</h2>
+  {% if ra %}
+    {% for name, weight, pts in factors %}<div class="bar"><span>{{ name }} <span class="muted small">{{ weight }}%</span></span><div class="track"><div class="fill" style="width:{{ pts }}%"></div></div><span class="mono">{{ pts }} pts</span></div>{% endfor %}
+    {% if ra.reasons %}<h3>Why</h3><ul class="small">{% for r in ra.reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
+    {% if ra.overrides %}<h3>Rules applied</h3><ul class="small">{% for o in ra.overrides %}<li>{{ o }}</li>{% endfor %}</ul>{% endif %}
+    <p class="small muted">Next review {{ ra.next_review_on|date:"d M Y"|default:"—" }} · settings {{ ra.settings_version }} · assessed {{ ra.assessed_at|date:"d M Y H:i" }} by {{ ra.assessed_by }}</p>
+  {% else %}<p class="muted">Not yet assessed.</p>{% endif %}
+  </section>
+</div>
+<section class="card"><h2>History</h2>
+<div class="tablewrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>
+{% for e in history %}<tr><td class="small">{{ e.at|date:"d M Y H:i" }}</td><td class="small">{{ e.actor }}</td><td>{{ e.action }}</td><td class="small mono">{{ e.detail }}</td></tr>{% empty %}<tr><td colspan="4" class="muted">No entries.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

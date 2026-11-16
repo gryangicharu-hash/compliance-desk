@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% block title %}Members · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Members</h1>{% if can_onboard %}<a class="btn primary" href="{% url 'members:onboard' %}">Onboard a member</a>{% endif %}</div>
+<form method="get" class="row" style="justify-content:flex-start">
+  <input name="q" value="{{ q }}" placeholder="Name, member no. or ID number" aria-label="Search">
+  <select name="rating" aria-label="Rating"><option value="">All ratings</option>    <option value="low" {% if rating == 'low' %}selected{% endif %}>Low</option><option value="medium" {% if rating == 'medium' %}selected{% endif %}>Medium</option>
+    <option value="high" {% if rating == 'high' %}selected{% endif %}>High</option><option value="prohibited" {% if rating == 'prohibited' %}selected{% endif %}>Prohibited</option></select>
+  <select name="status" aria-label="Status"><option value="">All statuses</option>{% for v, l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+  <button class="btn" type="submit">Filter</button>
+</form>
+<div class="tablewrap"><table>
+<thead><tr><th>No.</th><th>Member</th><th>Risk</th><th>Status</th><th>Next review</th></tr></thead>
+<tbody>
+{% for m in page %}<tr>
+  <td class="mono">{{ m.member_no }}</td>
+  <td><a href="{% url 'members:detail' m.member_no %}"><b>{{ m.name }}</b></a><br><span class="small muted">{{ m.get_member_type_display }} · {{ m.occupation }}</span></td>
+  <td>{% if m.rating %}<span class="pill r-{{ m.rating }}">{{ m.rating|title }}</span> <span class="mono muted">{{ m.score }}</span>{% else %}—{% endif %}</td>
+  <td><span class="pill s-{{ m.status }}">{{ m.get_status_display }}</span></td>
+  <td>{{ m.next_review|date:"d M Y"|default:"—" }}</td>
+</tr>{% empty %}<tr><td colspan="5" class="muted">No members match.</td></tr>{% endfor %}
+</tbody></table></div>
+{% if page.has_other_pages %}<p class="small">Page {{ page.number }} of {{ page.paginator.num_pages }}
+{% if page.has_previous %}<a href="?q={{ q|urlencode }}&rating={{ rating }}&status={{ status }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+{% if page.has_next %}<a href="?q={{ q|urlencode }}&rating={{ rating }}&status={{ status }}&page={{ page.next_page_number }}">Next</a>{% endif %}</p>{% endif %}
+{% endblock %}

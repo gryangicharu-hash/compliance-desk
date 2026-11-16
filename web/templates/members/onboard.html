@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}Onboard a member · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Onboard a member</h1><a href="{% url 'members:list' %}">Cancel</a></div>
+<section class="card">
+  <p class="muted small">The member is risk-rated before the account opens. PEPs and high-risk members wait for senior management approval.</p>
+  <form method="post" class="f" novalidate>{% csrf_token %}
+    {% if form.non_field_errors %}<div class="full">{{ form.non_field_errors }}</div>{% endif %}
+    {{ form.as_p }}
+    <p class="full"><button class="btn primary" type="submit">Save and risk-rate</button></p>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block title %}Two-factor code{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Enter your code</h1>
+  <p class="muted">Open your authenticator app and type the current 6-digit code.</p>
+  <form method="post" class="f" style="grid-template-columns:1fr">{% csrf_token %}
+    {{ form.as_p }}
+    <p><button class="btn primary" type="submit">Continue</button></p>
+  </form>
+</section>
+{% endblock %}

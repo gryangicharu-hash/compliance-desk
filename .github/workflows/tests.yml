@@ -41,3 +41,47 @@ jobs:
             psql -v ON_ERROR_STOP=1 -d compliance_test -f "$f"
           done
           python db/test_audit_chain.py | psql -v ON_ERROR_STOP=1 -d compliance_test
+
+  web:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: compliance_desk
+      DJANGO_SECRET_KEY: ci-only-not-a-real-secret-0123456789abcdefghijklmnop
+      BLIND_INDEX_KEY: ci-only-blind-index-key-0123456789abcdef
+      DJANGO_SECURE_SSL_REDIRECT: "0"
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .. -r requirements.txt
+        working-directory: web
+      - run: python -m pip freeze | grep -i -E "^(django|psycopg|cryptography)"
+      - name: Encryption key for this run only
+        run: echo "FIELD_ENCRYPTION_KEYS=$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
+      - name: Generate any missing migrations
+        run: python manage.py makemigrations accounts audittrail members
+      - uses: actions/upload-artifact@v4
+        with:
+          name: migrations
+          path: web/*/migrations/*.py
+      - run: python manage.py check
+      - run: python manage.py test --verbosity 2
+      - name: Migrations must be committed
+        run: |
+          git status --porcelain -- '*/migrations/*.py'
+          test -z "$(git status --porcelain -- '*/migrations/*.py')" || { echo "::error::Commit the generated migrations (see the 'migrations' artifact)"; exit 1; }

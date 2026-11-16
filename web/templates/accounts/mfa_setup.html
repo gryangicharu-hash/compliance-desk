@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block title %}Set up two-factor login{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Set up two-factor login</h1>
+  <p class="muted">Your role can see sensitive compliance information, so every login needs a code from an authenticator app (for example Google Authenticator or Microsoft Authenticator).</p>
+  <ol class="small">
+    <li>In the app, choose to add an account by entering a key.</li>
+    <li>Enter this key: <span class="mono" id="key">{{ secret }}</span></li>
+    <li>Type the 6-digit code the app shows.</li>
+  </ol>
+  <details class="small"><summary>Setup link for apps that accept one</summary><p class="mono" style="overflow-wrap:anywhere">{{ uri }}</p></details>
+  <form method="post" class="f" style="grid-template-columns:1fr;margin-top:12px">{% csrf_token %}
+    {{ form.as_p }}
+    <p><button class="btn primary" type="submit">Confirm</button></p>
+  </form>
+</section>
+{% endblock %}

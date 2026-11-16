@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block title %}Overview · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Compliance overview</h1>{% if can_onboard %}<a class="btn primary" href="{% url 'members:onboard' %}">Onboard a member</a>{% endif %}</div>
+<div class="tiles">
+  <div class="tile"><div class="v">{{ total }}</div><div class="l">Members (excluding exited)</div></div>
+  <div class="tile"><div class="v">{{ by_rating.low }}</div><div class="l">Low risk</div></div>
+  <div class="tile"><div class="v">{{ by_rating.medium }}</div><div class="l">Medium risk</div></div>
+  <div class="tile"><div class="v">{{ by_rating.high }}</div><div class="l">High risk</div></div>
+  <div class="tile"><div class="v">{{ by_rating.prohibited }}</div><div class="l">Prohibited</div></div>
+</div>
+<section class="card"><h2>Awaiting senior management approval</h2>
+  {% if pending %}<div class="tablewrap"><table><thead><tr><th>Member</th><th>PEP</th><th>Onboarded</th></tr></thead><tbody>
+  {% for m in pending %}<tr><td><a href="{% url 'members:detail' m.member_no %}">{{ m.name }}</a><br><span class="mono muted">{{ m.member_no }}</span></td><td>{{ m.get_pep_display }}</td><td>{{ m.created_at|date:"d M Y H:i" }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="muted">Nothing waiting.</p>{% endif %}
+</section>
+{% endblock %}
