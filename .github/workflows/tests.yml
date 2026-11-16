@@ -75,13 +75,14 @@ jobs:
         run: echo "FIELD_ENCRYPTION_KEYS=$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
       - name: Generate any missing migrations
         run: python manage.py makemigrations accounts audittrail members
-      - uses: actions/upload-artifact@v4
-        with:
-          name: migrations
-          path: web/*/migrations/*.py
+      - name: Print new migrations (so they can be reviewed and committed)
+        run: |
+          for f in $(git ls-files --others --exclude-standard -- '*/migrations/*.py'); do
+            echo "=====BEGIN $f"; cat "$f"; echo "=====END $f"
+          done
       - run: python manage.py check
       - run: python manage.py test --verbosity 2
       - name: Migrations must be committed
         run: |
           git status --porcelain -- '*/migrations/*.py'
-          test -z "$(git status --porcelain -- '*/migrations/*.py')" || { echo "::error::Commit the generated migrations (see the 'migrations' artifact)"; exit 1; }
+          test -z "$(git status --porcelain -- '*/migrations/*.py')" || { echo "::error::Commit the generated migrations printed above"; exit 1; }
