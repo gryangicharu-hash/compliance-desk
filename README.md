@@ -4,9 +4,10 @@ AML/CFT compliance platform for Kenyan deposit-taking SACCOs, built around the
 Proceeds of Crime and Anti-Money Laundering Act (POCAMLA) and its Regulations
 (2023 amendments).
 
-**Status: v0.2.0, engine, AML audit module and database.** The compliance rules and the
-database are built and tested. The web application (screens, logins, scheduled
-jobs) is the next stage; see [docs/ROADMAP.md](docs/ROADMAP.md).
+**Status: v0.3.0-alpha.** Engine, AML audit module and database are built and tested. The web
+application (`web/`, Django) has stage 1: logins with two-factor authentication, roles,
+member onboarding with risk rating, approval of PEPs, and the audit trail. Screening, cases,
+reports and scheduled jobs come next; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What is here
 
@@ -51,6 +52,19 @@ psql -v ON_ERROR_STOP=1 -d compliance_test -f db/schema_audit_module.sql
 psql -v ON_ERROR_STOP=1 -d compliance_test -f db/test_audit_module.sql
 python db/test_audit_chain.py | psql -v ON_ERROR_STOP=1 -d compliance_test
 ```
+
+## Running the web application (development)
+
+```bash
+python -m pip install -e . -r web/requirements.txt
+export DJANGO_DEBUG=1 DJANGO_SECRET_KEY=dev-only-change-me PGDATABASE=compliance_desk PGUSER=... PGPASSWORD=...
+export FIELD_ENCRYPTION_KEYS=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+export BLIND_INDEX_KEY=dev-only-blind-index-key-at-least-32-chars
+cd web && python manage.py migrate && python manage.py createsuperuser && python manage.py runserver
+```
+
+Keep the encryption keys safe: data encrypted with a lost key cannot be recovered.
+Every change pushed to GitHub runs the engine, database and web tests automatically.
 
 ## Before any production use
 

@@ -7,7 +7,12 @@
   auditor working-paper tables with independence safeguards, guarantor flags in risk scoring,
   automatic tests on GitHub. 59 engine tests.
 
-## Next: web application (v0.3)
+- v0.3.0-alpha (web stage 1): Django app with logins, two-factor authentication (RFC 6238,
+  replay-protected), lockout, roles, per-request database role for row-level security,
+  member onboarding with encrypted ID numbers, risk rating, PEP approval with
+  segregation of duties, hash-chained append-only audit trail. 19 web tests.
+
+## Next: web application, remaining stages
 
 Built on Django with the engine as a library.
 
