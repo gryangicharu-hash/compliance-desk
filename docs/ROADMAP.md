@@ -39,6 +39,13 @@
   Governance records (staff AML training, board approval of the institutional risk
   assessment), quarterly board report (counts only), periodic member review. 64 web tests.
 
+- v0.7.0-alpha (pilot preparation): Docker image and compose file, database role set-up,
+  reverse proxy example, systemd timers for jobs and backups, backup and restore scripts,
+  `verify_database` restore check, staff administration with one-time passwords and forced
+  change at first login, QR code for two-factor setup, health check, `seed_demo` training
+  data. CI now also runs Django's production checks, pip-audit, the image build and a full
+  backup-restore test. Docs: DEPLOYMENT, USER_GUIDE, DPIA (draft). 68 web tests.
+
 ## Next: towards a pilot
 
 Built on Django with the engine as a library.
@@ -53,8 +60,8 @@ Built on Django with the engine as a library.
    their real export files).
 5. Weekly cash report: confirm the week and nil-return reading with the FRC.
 6. Second approval for closing cases and lowering ratings.
-7. Pilot hardening: deployment scripts, backups and restore test, penetration test,
-   user guide, data-protection impact assessment (Kenya Data Protection Act 2019).
+7. Before real data: independent penetration test, DPIA sign-off, ODPC registration
+   check, retention deletion job, separate migration database role, off-site backups.
 
 ## Open items and owners
 
