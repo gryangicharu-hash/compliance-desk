@@ -100,6 +100,9 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = True
+# On-screen messages can name cases; keep them server-side, tied to the session
+# (cookie storage is signed but readable, and survives a change of user).
+MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"

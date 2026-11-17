@@ -89,8 +89,8 @@ def rescreen_all(actor: str) -> int:
         new = screen(member, actor, entries)
         if new:
             raised += len(new)
-            settle_status(member, actor)
             reassess(member, actor)
+            settle_status(member, actor)
     record(actor, "screening.rescreened_all", "all members", {"new_hits": raised})
     return raised
 
@@ -108,20 +108,25 @@ def _parse(data: bytes, fmt: str, list_name: str) -> list[L.ListEntry]:
     return L.parse_csv_list(text, list_name=list_name, mapping=mapping)
 
 
-@transaction.atomic
 def load_list(*, data: bytes, filename: str, list_name: str, kind: str, fmt: str, user) -> ListVersion:
+    """Parse first; a file that can't be read is recorded as rejected (outside any
+    transaction, so the record survives) and the list in use stays unchanged."""
     sha = hashlib.sha256(data).hexdigest()
     try:
         parsed = _parse(data, fmt, list_name)
         if not parsed:
             raise L.ListFormatError("The file contains no entries")
     except L.ListFormatError as exc:
-        with transaction.atomic():
-            ListVersion.objects.create(list_name=list_name, kind=kind, source=filename, sha256=sha,
-                                       status=ListVersion.Status.REJECTED, error=str(exc), loaded_by=user)
+        ListVersion.objects.create(list_name=list_name, kind=kind, source=filename, sha256=sha,
+                                   status=ListVersion.Status.REJECTED, error=str(exc), loaded_by=user)
         record(user.username, "screening.list_rejected", list_name, {"file": filename, "error": str(exc)})
         raise ValidationError(f"The list was not loaded: {exc}. The list already in use is unchanged.")
+    return _install(parsed, data_sha=sha, filename=filename, list_name=list_name, kind=kind, user=user)
 
+
+@transaction.atomic
+def _install(parsed, *, data_sha, filename, list_name, kind, user) -> ListVersion:
+    sha = data_sha
     previous = ListVersion.objects.select_for_update().filter(list_name=list_name, status=ListVersion.Status.CURRENT).first()
     old_entries = [_to_core(e, list_name) for e in previous.entries.all()] if previous else []
     if previous:
@@ -176,9 +181,9 @@ def decide(hit: Hit, *, user, decision: str, note: str) -> Hit:
             member.status = Status.PENDING_APPROVAL
         member.save()
         record(user.username, "member.pep_confirmed", member.member_no, {"list_entry": hit.entry_ref})
+        reassess(member, user.username)          # rating first: settle_status reads it
         settle_status(member, user.username)
-        reassess(member, user.username)
     else:
-        settle_status(member, user.username)
         reassess(member, user.username)
+        settle_status(member, user.username)
     return hit

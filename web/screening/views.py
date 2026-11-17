@@ -94,7 +94,7 @@ def rescreen_member(request, member_no):
     from members.services import reassess
     member = get_object_or_404(Member, member_no=member_no)
     new = services.screen(member, request.user.username)
-    services.settle_status(member, request.user.username)
     reassess(member, request.user.username)
+    services.settle_status(member, request.user.username)
     messages.info(request, f"Re-screened: {len(new)} new match(es).")
     return redirect("members:detail", member_no=member_no)
