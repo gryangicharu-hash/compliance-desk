@@ -74,7 +74,7 @@ jobs:
       - name: Encryption key for this run only
         run: echo "FIELD_ENCRYPTION_KEYS=$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
       - name: Generate any missing migrations
-        run: python manage.py makemigrations accounts audittrail members screening cases corebanking monitoring jobs
+        run: python manage.py makemigrations accounts audittrail members screening cases corebanking monitoring jobs assurance
       - name: Print new migrations (so they can be reviewed and committed)
         run: |
           for f in $(git ls-files --others --exclude-standard -- '*/migrations/*.py'); do

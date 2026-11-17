@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block title %}Governance records · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Training and risk assessment records</h1><a href="{% url 'assurance:list' %}">Audit</a></div>
+<p class="muted">These records feed audit tests AT16 (staff training) and AT17 (board approval of the institutional risk assessment, at least every two years under reg. 6) and the board report.</p>
+<div class="grid">
+<section class="card"><h2>Institutional risk assessment</h2>
+{% if approvals %}<p>Last approved by the board on <b>{{ approvals.0.approved_on|date:"d M Y" }}</b> ({{ approval_age }} days ago), minute <span class="mono">{{ approvals.0.board_minute_ref }}</span>.{% if approval_age > 730 %} <span class="pill r-high">Over two years</span>{% endif %}</p>
+<ul class="small">{% for a in approvals %}<li>{{ a.approved_on|date:"d M Y" }} · {{ a.document_name }} · {{ a.board_minute_ref }} · settings {{ a.risk_settings_version|default:"—" }} · recorded by {{ a.recorded_by }}</li>{% endfor %}</ul>
+{% else %}<p class="msg warning">No board approval recorded.</p>{% endif %}
+{% if can_edit %}<form method="post" class="f">{% csrf_token %}{{ aform.as_p }}<p class="full"><button class="btn" type="submit">Record approval</button></p></form>{% endif %}
+</section>
+<section class="card"><h2>Staff AML training</h2>
+<div class="tablewrap"><table><thead><tr><th>Staff</th><th>Current training</th></tr></thead><tbody>
+{% for u, t in staff %}<tr><td>{{ u }} <span class="small muted">{{ u.get_role_display }}</span></td><td class="small">{% if t %}{{ t.course }}, valid to {{ t.valid_until|date:"d M Y" }}{% else %}<span class="pill r-high">None</span>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
+{% if can_edit %}<form method="post" class="f" style="margin-top:12px">{% csrf_token %}{{ tform.as_p }}<p class="full"><button class="btn" type="submit">Record training</button></p></form>{% endif %}
+</section></div>
+{% endblock %}

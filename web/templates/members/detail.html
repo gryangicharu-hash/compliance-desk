@@ -38,7 +38,10 @@
     {% for name, weight, pts in factors %}<div class="bar"><span>{{ name }} <span class="muted small">{{ weight }}%</span></span><div class="track"><div class="fill" style="width:{{ pts }}%"></div></div><span class="mono">{{ pts }} pts</span></div>{% endfor %}
     {% if ra.reasons %}<h3>Why</h3><ul class="small">{% for r in ra.reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
     {% if overrides %}<h3>Rules applied</h3><ul class="small">{% for o in overrides %}<li>{{ o }}</li>{% endfor %}</ul>{% endif %}
-    <p class="small muted">Next review {{ ra.next_review_on|date:"d M Y"|default:"—" }} · settings {{ ra.settings_version }} · assessed {{ ra.assessed_at|date:"d M Y H:i" }} by {{ ra.assessed_by }}</p>
+    {% if can_decide and m.status != 'exited' %}<form method="post" action="{% url 'members:review' m.member_no %}" class="f" style="margin:10px 0">{% csrf_token %}
+      <p class="full"><label for="rv">Record a periodic review</label><textarea id="rv" name="note" rows="2" placeholder="What was checked: ID, address, income, source of funds, activity against profile"></textarea></p>
+      <p><button class="btn" type="submit">Record review</button></p></form>{% endif %}
+    <p class="small muted">Last review {{ m.last_review_on|date:"d M Y"|default:"—" }} · next review {{ ra.next_review_on|date:"d M Y"|default:"—" }} · settings {{ ra.settings_version }} · assessed {{ ra.assessed_at|date:"d M Y H:i" }} by {{ ra.assessed_by }}</p>
   {% else %}<p class="muted">Not yet assessed.</p>{% endif %}
   </section>
 </div>

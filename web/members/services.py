@@ -160,3 +160,18 @@ def parse_people(text: str, kind: str) -> list[PersonInput]:
 
 def needs_people(member_type: str) -> bool:
     return member_type != MemberType.INDIVIDUAL
+
+
+@transaction.atomic
+def record_review(member: Member, *, user, note: str) -> RiskAssessment:
+    """A periodic KYC review (regs 29-30): the file was checked and brought up to date.
+    Re-rates the member and schedules the next review from today."""
+    member = Member.objects.select_for_update().get(pk=member.pk)
+    if member.status == Status.EXITED:
+        raise ValidationError("Exited members are not reviewed.")
+    if not note.strip():
+        raise ValidationError("Record what was checked in the review.")
+    member.last_review_on = timezone.localdate()
+    member.save(update_fields=["last_review_on", "updated_at"])
+    record(user.username, "member.reviewed", member.member_no, {"note": note.strip()})
+    return reassess(member, user.username)

@@ -144,3 +144,16 @@ def approve(request, member_no):
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
     return redirect("members:detail", member_no=member_no)
+
+
+@require_POST
+@role_required(Role.COMPLIANCE_OFFICER)
+def review(request, member_no):
+    member = get_object_or_404(Member, member_no=member_no)
+    try:
+        ra = services.record_review(member, user=request.user, note=request.POST.get("note", ""))
+        messages.success(request, f"Review recorded. Next review {ra.next_review_on:%d %b %Y}." if ra.next_review_on
+                         else "Review recorded.")
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+    return redirect("members:detail", member_no=member_no)

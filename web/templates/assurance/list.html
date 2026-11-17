@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block title %}Audit · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>AML audit</h1><a href="{% url 'assurance:governance' %}">Training and risk assessment records</a></div>
+<p class="muted">Auditors run 17 automated control tests over the whole population, draw reproducible samples, work through the programme and raise findings. Only auditors can change these working papers; management reads findings and records responses. Saved test runs and samples can never be altered.</p>
+{% if is_auditor %}<section class="card"><h2>Open an engagement</h2>
+<form method="post" class="f">{% csrf_token %}{{ form.as_p }}<p class="full"><button class="btn primary" type="submit">Open engagement</button></p></form></section>{% endif %}
+<section class="card"><h2>Engagements</h2>
+<div class="tablewrap"><table><thead><tr><th>Ref</th><th>Engagement</th><th>Period</th><th>Status</th></tr></thead><tbody>
+{% for e in engagements %}<tr><td class="mono"><a href="{% url 'assurance:engagement' e.ref %}">{{ e.ref }}</a></td><td>{{ e.title }}<br><span class="small muted">{{ e.get_kind_display }} · lead {{ e.lead_auditor }}</span></td>
+<td class="small">{{ e.period_start|date:"d M Y" }} – {{ e.period_end|date:"d M Y" }}</td><td>{{ e.get_status_display }}</td></tr>
+{% empty %}<tr><td colspan="4" class="muted">No engagements yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

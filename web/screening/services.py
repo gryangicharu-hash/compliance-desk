@@ -65,6 +65,8 @@ def screen(member: Member, actor: str, entries: dict | None = None) -> list[Hit]
     entries = current_entries() if entries is None else entries
     from members.services import to_core
     core_member = to_core(member)
+    if entries is None or any(entries.values()):
+        Member.objects.filter(pk=member.pk).update(last_screened_at=timezone.now())
     decided = set(member.hits.values_list("member__member_no", "subject_name", "list_name", "entry_ref"))
     created = []
     for kind, es in entries.items():

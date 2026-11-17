@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "corebanking",
     "monitoring",
     "jobs",
+    "assurance",
 ]
 
 MIDDLEWARE = [

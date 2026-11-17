@@ -73,6 +73,7 @@ class Member(models.Model):
     id_expiry = models.DateField(null=True, blank=True)
     joined_on = models.DateField(default=timezone.localdate)
     last_review_on = models.DateField(null=True, blank=True)
+    last_screened_at = models.DateTimeField(null=True, blank=True)     # audit test AT10
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_APPROVAL)
     exited_on = models.DateField(null=True, blank=True)
     onboarded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT,

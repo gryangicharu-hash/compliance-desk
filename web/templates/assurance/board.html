@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% block title %}Board report {{ label }} · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>AML/CFT board report</h1>
+<form method="get" class="row"><select name="q">{% for q in quarters %}<option value="{{ q }}"{% if q == label %} selected{% endif %}>{{ q }}</option>{% endfor %}</select><button class="btn" type="submit">Show</button>
+<a class="btn" href="?q={{ label }}&format=txt">Download text</a></form></div>
+<p class="muted">{{ s.period }}. Figures are counts only: no member names or case details, so the report can go in board papers.{% if not period_end_passed %} This quarter has not ended; figures are to date.{% endif %}</p>
+<div class="tiles">
+  {% for k, v in s.members_by_rating.items %}<div class="tile"><div class="v">{{ v }}</div><div class="l">{{ k|title }} risk members</div></div>{% endfor %}
+  <div class="tile"><div class="v">{{ s.pep_count }}</div><div class="l">PEPs</div></div>
+</div>
+<div class="grid">
+<section class="card"><h2>Due diligence</h2><dl class="kv">
+  <dt>Periodic reviews completed</dt><dd>{{ s.reviews_completed }}</dd>
+  <dt>Reviews overdue at period end</dt><dd>{{ s.reviews_overdue }}</dd>
+  <dt>Screening matches raised</dt><dd>{{ s.screening_hits_raised }}</dd>
+  <dt>Confirmed matches</dt><dd>{{ s.screening_hits_confirmed }}</dd></dl></section>
+<section class="card"><h2>Monitoring and reporting</h2><dl class="kv">
+  <dt>Monitoring alerts</dt><dd>{% for k, v in s.alerts_raised.items %}{{ k|title }} {{ v }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</dd>
+  <dt>STRs filed</dt><dd>{{ s.strs_filed }}{% if s.strs_filed_late %} <span class="pill r-high">{{ s.strs_filed_late }} late</span>{% endif %}</dd>
+  <dt>Weekly cash reports filed</dt><dd>{{ s.cash_reports_filed }}</dd></dl></section>
+<section class="card"><h2>Controls</h2><dl class="kv">
+  <dt>Staff with current AML training</dt><dd>{{ s.staff_trained }} of {{ s.staff_total }} ({{ trained_pct }}%)</dd>
+  <dt>Open audit findings</dt><dd>{% for k, v in open_findings.items %}{{ k|title }} {{ v }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</dd>
+  <dt>Findings past agreed date</dt><dd>{{ overdue_findings }}</dd></dl></section>
+</div>
+{% endblock %}

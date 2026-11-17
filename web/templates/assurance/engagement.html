@@ -1,0 +1,57 @@
+{% extends "base.html" %}{% block title %}{{ e.ref }} · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><div><span class="mono muted">{{ e.ref }} · {{ e.get_kind_display }} · {{ e.period_start|date:"d M Y" }} – {{ e.period_end|date:"d M Y" }} · lead {{ e.lead_auditor }}</span><h1>{{ e.title }}</h1>
+<p><span class="pill s-{% if e.status == 'closed' %}exited{% else %}active{% endif %}">{{ e.get_status_display }}</span></p></div>
+<div class="row" style="justify-content:flex-end">
+{% if is_auditor or e.status == 'reporting' or e.status == 'closed' %}{% if is_auditor and run or not is_auditor %}<a class="btn" href="{% url 'assurance:report' e.ref %}">Download report</a>{% endif %}{% endif %}
+{% if is_auditor and e.status != 'closed' %}
+  {% if e.status != 'reporting' %}<form method="post" action="{% url 'assurance:status' e.ref %}">{% csrf_token %}<input type="hidden" name="status" value="reporting"><button class="btn" type="submit">Move to reporting</button></form>{% endif %}
+  <form method="post" action="{% url 'assurance:status' e.ref %}">{% csrf_token %}<input type="hidden" name="status" value="closed"><button class="btn" type="submit">Close engagement</button></form>
+{% endif %}</div></div>
+{% if e.scope %}<p class="muted">{{ e.scope }}</p>{% endif %}
+
+{% if is_auditor %}
+<section class="card"><div class="row"><h2>Automated control tests</h2>
+{% if e.status != 'closed' %}<form method="post" action="{% url 'assurance:run_tests' e.ref %}">{% csrf_token %}<button class="btn primary" type="submit">Run all 17 tests now</button></form>{% endif %}</div>
+{% if run %}<p class="small muted">Latest run {{ run.run_at|date:"d M Y H:i" }} by {{ run.run_by }} · engine {{ run.engine_version }} · data fingerprint <span class="mono">{{ run.data_fingerprint }}</span></p>
+<div class="tablewrap"><table><thead><tr><th>Test</th><th>Regulation</th><th>Result</th><th>Exceptions</th></tr></thead><tbody>
+{% for r in results %}<tr><td><span class="mono">{{ r.code }}</span> {{ r.title }}</td><td class="small">{{ r.regulation }}</td>
+<td>{% if r.outcome == 'pass' %}<span class="pill s-active">Pass</span>{% elif r.outcome == 'fail' %}<span class="pill {% if r.severity == 'high' %}r-high{% else %}r-medium{% endif %}">Fail</span>{% else %}<span class="pill s-exited">Nothing to test</span>{% endif %}</td>
+<td class="small">{{ r.exceptions|length }} of {{ r.population }}{% if r.exceptions %}<details><summary>Show</summary><ul>{% for ref, detail in r.exceptions|slice:":50" %}<li><span class="mono">{{ ref }}</span> {{ detail }}</li>{% endfor %}</ul>{% if r.exceptions|length > 50 %}<span class="muted">…and {{ r.exceptions|length|add:"-50" }} more (in the report)</span>{% endif %}</details>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
+{% if runs|length > 1 %}<p class="small muted">Earlier runs: {% for r in runs %}{% if not forloop.first %}{{ r.run_at|date:"d M H:i" }} (<span class="mono">{{ r.data_fingerprint|slice:":12" }}</span>){% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}</p>{% endif %}
+{% else %}<p class="muted">Not run yet.</p>{% endif %}
+</section>
+
+{% if follow_up %}<section class="card"><h2>Follow-up of earlier findings</h2><ul class="small">{% for f, state in follow_up %}<li><span class="mono">{{ f.engagement.ref }} {{ f.ref }}</span> {{ f.title }}: <b>{{ state }}</b></li>{% endfor %}</ul></section>{% endif %}
+
+<section class="card"><h2>Samples</h2>
+{% for s in samples %}<details><summary>{{ s.population_name }}: {{ s.selected|length }} of {{ s.population_size }} · {{ s.method }} · seed <span class="mono">{{ s.seed }}</span> · {{ s.created_at|date:"d M Y H:i" }}</summary><p class="mono small">{{ s.selected|join:", " }}</p></details>{% empty %}<p class="muted small">No samples yet.</p>{% endfor %}
+{% if e.status != 'closed' %}<form method="post" action="{% url 'assurance:sample' e.ref %}" class="f" style="margin-top:10px">{% csrf_token %}{{ sample_form.as_p }}<p class="full"><button class="btn" type="submit">Draw sample</button></p></form>{% endif %}
+</section>
+
+<section class="card"><h2>Programme</h2>
+<div class="tablewrap"><table><thead><tr><th>No.</th><th>Procedure</th><th>Result</th></tr></thead><tbody>
+{% for s in steps %}<tr><td class="mono">{{ s.step_no }}</td><td><span class="small muted">{{ s.area }} · {{ s.regulation }}{% if s.test_code %} · <span class="mono">{{ s.test_code }}</span>{% endif %}</span><br>{{ s.procedure }}{% if s.notes %}<br><span class="small">{{ s.notes }}</span>{% endif %}</td>
+<td>{% if e.status != 'closed' %}<form method="post" action="{% url 'assurance:step' e.ref s.step_no %}" class="f" style="grid-template-columns:1fr">{% csrf_token %}
+<p><select name="result"><option value="">Not yet done</option>{% for v, l in step_results %}<option value="{{ v }}"{% if s.result == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></p>
+<p><input name="workpaper_ref" value="{{ s.workpaper_ref }}" placeholder="Working paper ref"></p>
+<p><textarea name="notes" rows="1" placeholder="Notes">{{ s.notes }}</textarea></p><p><button class="btn" type="submit">Save</button></p></form>
+{% else %}{{ s.get_result_display|default:"Not done" }} <span class="mono small">{{ s.workpaper_ref }}</span>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endif %}
+
+<section class="card"><div class="row"><h2>Findings</h2>
+{% if is_auditor and run and e.status != 'closed' %}<form method="post" action="{% url 'assurance:draft_findings' e.ref %}">{% csrf_token %}<button class="btn" type="submit">Draft findings from failed tests</button></form>{% endif %}</div>
+{% for f in findings %}<div class="card" style="margin-top:10px">
+  <p><span class="mono">{{ f.ref }}</span> <span class="pill {% if f.severity == 'high' %}r-high{% elif f.severity == 'medium' %}r-medium{% else %}r-low{% endif %}">{{ f.get_severity_display }}</span> <b>{{ f.title }}</b> <span class="small muted">{{ f.regulation }}{% if f.test_code %} · {{ f.test_code }}{% endif %} · {{ f.get_status_display }}</span></p>
+  <p class="small"><b>Condition.</b> {{ f.condition }}</p><p class="small"><b>Recommendation.</b> {{ f.recommendation }}</p>
+  {% if f.closure_evidence %}<p class="small"><b>Closed {{ f.closed_on|date:"d M Y" }}.</b> {{ f.closure_evidence }}</p>{% endif %}
+  {% if f.response %}<p class="small"><b>Management response</b> ({{ f.response.responded_by }}, {{ f.response.responded_at|date:"d M Y" }}): {{ f.response.response }} Owner: {{ f.response.owner }}; agreed date {{ f.response.due_on|date:"d M Y" }}.</p>{% endif %}
+  {% if is_management and f.status != 'closed' %}<form method="post" action="{% url 'assurance:respond' e.ref f.ref %}" class="f">{% csrf_token %}{{ response_form.as_p }}<p class="full"><button class="btn" type="submit">{% if f.response %}Update response{% else %}Record response{% endif %}</button></p></form>{% endif %}
+  {% if is_auditor and e.status != 'closed' %}<form method="post" action="{% url 'assurance:finding_status' e.ref f.ref %}" class="f">{% csrf_token %}{{ status_form.as_p }}<p class="full"><button class="btn" type="submit">Set status</button></p></form>{% endif %}
+</div>{% empty %}<p class="muted small">No findings.</p>{% endfor %}
+{% if is_auditor and e.status != 'closed' %}<details style="margin-top:12px"><summary>Raise a finding from manual testing</summary>
+<form method="post" action="{% url 'assurance:add_finding' e.ref %}" class="f">{% csrf_token %}{{ finding_form.as_p }}<p class="full"><button class="btn" type="submit">Raise finding</button></p></form></details>{% endif %}
+</section>
+{% endblock %}
