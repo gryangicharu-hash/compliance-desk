@@ -61,6 +61,12 @@ def login_view(request):
     return render(request, "accounts/login.html", {"form": form, "next": request.GET.get("next", "")})
 
 
+def _qr_svg(text: str) -> str:
+    """QR code as inline SVG, drawn on the server (no third-party service sees the secret)."""
+    import segno
+    return segno.make(text, error="m").svg_inline(scale=4, border=2, dark="#000", light="#fff")
+
+
 def mfa_setup(request):
     user = request.user
     if user.mfa_confirmed:
@@ -82,8 +88,9 @@ def mfa_setup(request):
             messages.success(request, "Two-factor login is set up.")
             return redirect("home")
     grouped = " ".join(secret[i:i + 4] for i in range(0, len(secret), 4))
+    uri = totp.provisioning_uri(secret, user.username)
     return render(request, "accounts/mfa_setup.html", {
-        "form": form, "secret": grouped, "uri": totp.provisioning_uri(secret, user.username)})
+        "form": form, "secret": grouped, "uri": uri, "qr": _qr_svg(uri)})
 
 
 def mfa_verify(request):
@@ -123,3 +130,18 @@ def logout_view(request):
 
 def forbidden(request, exception=None):
     return render(request, "403.html", status=403)
+
+
+def password_change(request):
+    from django.contrib.auth import update_session_auth_hash
+    from django.contrib.auth.forms import PasswordChangeForm
+    form = PasswordChangeForm(request.user, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        user.must_change_password = False
+        user.save(update_fields=["must_change_password"])
+        update_session_auth_hash(request, user)
+        record(user.username, "user.password_changed", user.username, {})
+        messages.success(request, "Password changed.")
+        return redirect("home")
+    return render(request, "accounts/password.html", {"form": form, "forced": request.user.must_change_password})

@@ -94,3 +94,25 @@ class JobTests(StaffTestCase):
         self.as_user(self.auditor)
         self.assertContains(self.client.get(reverse("jobs:list")), "run_monitoring")
         self.assertEqual(self.client.post(reverse("jobs:run", args=["run_monitoring"])).status_code, 403)
+
+
+class DemoAndRestoreCheckTests(StaffTestCase):
+    def test_seed_demo_and_verify_database(self):
+        from corebanking.models import NetworkFlag
+        from members.models import Status
+        from monitoring.models import Alert
+        with self.assertRaises(CommandError):
+            call_command("seed_demo", members=50, stdout=open("/dev/null", "w"))          # confirmation required
+        call_command("seed_demo", confirmed=True, members=50, with_users=True, stdout=open("/dev/null", "w"))
+        self.assertEqual(Member.objects.count(), 51)
+        self.assertEqual(Member.objects.get(member_no="D0005").status, Status.SCREENING_HOLD)
+        self.assertTrue(NetworkFlag.objects.filter(member__member_no="D0010", code="CIRCULAR").exists())
+        self.assertTrue(NetworkFlag.objects.filter(member__member_no="D0020", code="CONCENTRATION").exists())
+        with db_role("auditor"):
+            rules = set(Alert.objects.values_list("rule", flat=True))
+        self.assertTrue({"STRUCTURING", "LARGE_CASH", "RAPID_IN_OUT", "MANY_PAYERS"} <= rules, rules)
+        from accounts.models import User
+        self.assertTrue(User.objects.get(username="demo.co").must_change_password)
+        with self.assertRaises(CommandError):
+            call_command("seed_demo", confirmed=True, stdout=open("/dev/null", "w"))       # never on a database with members
+        call_command("verify_database", stdout=open("/dev/null", "w"))

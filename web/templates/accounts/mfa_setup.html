@@ -4,8 +4,8 @@
   <h1>Set up two-factor login</h1>
   <p class="muted">Your role can see sensitive compliance information, so every login needs a code from an authenticator app (for example Google Authenticator or Microsoft Authenticator).</p>
   <ol class="small">
-    <li>In the app, choose to add an account by entering a key.</li>
-    <li>Enter this key: <span class="mono" id="key">{{ secret }}</span></li>
+    <li>In the app, add an account and scan this code:<div style="margin:8px 0;width:max-content;max-width:100%">{{ qr|safe }}</div>
+      Or enter this key instead: <span class="mono" id="key">{{ secret }}</span></li>
     <li>Type the 6-digit code the app shows.</li>
   </ol>
   <details class="small"><summary>Setup link for apps that accept one</summary><p class="mono" style="overflow-wrap:anywhere">{{ uri }}</p></details>

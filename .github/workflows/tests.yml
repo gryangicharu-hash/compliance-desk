@@ -81,13 +81,46 @@ jobs:
             echo "=====BEGIN $f"; cat "$f"; echo "=====END $f"
           done
       - run: python manage.py check
+      - name: Production settings check
+        run: python manage.py check --deploy --fail-level WARNING
+        env:
+          DJANGO_SECURE_SSL_REDIRECT: "1"
+      - name: Known vulnerabilities in installed packages
+        run: python -m pip install pip-audit && pip-audit --skip-editable
+      - run: python manage.py collectstatic --noinput
       - name: Database role without superuser rights, so row-level security really applies
         run: psql -d postgres -c "CREATE ROLE compliance_app LOGIN CREATEDB PASSWORD 'ci-only'"
       - run: python manage.py test --verbosity 2
         env:
           PGUSER: compliance_app
           PGPASSWORD: ci-only
+      - name: Backup and restore test (demo data, nightly jobs, dump, restore, verify)
+        env:
+          PGUSER: compliance_app
+          PGPASSWORD: ci-only
+        run: |
+          createdb compliance_desk
+          python manage.py migrate --noinput
+          python manage.py createcachetable
+          python manage.py seed_demo --yes-this-is-a-demo --members 60
+          python manage.py runjobs nightly
+          PGUSER=postgres PGPASSWORD=postgres BACKUP_DIR=/tmp/backups bash ../deploy/backup.sh
+          PGUSER=postgres PGPASSWORD=postgres APP_DB_PASSWORD=ci-only bash ../deploy/restore.sh "$(ls /tmp/backups/*.dump)" compliance_restored
       - name: Migrations must be committed
         run: |
           git status --porcelain -- '*/migrations/*.py'
           test -z "$(git status --porcelain -- '*/migrations/*.py')" || { echo "::error::Commit the generated migrations printed above"; exit 1; }
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the application image
+        run: docker build -t compliance-desk:ci .
+      - name: Image starts and passes Django's checks
+        run: |
+          docker run --rm -e DJANGO_SECRET_KEY=ci-only-not-a-real-secret-0123456789abcdefghijklmnop \
+            -e FIELD_ENCRYPTION_KEYS=$(python3 -c 'import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())') \
+            -e BLIND_INDEX_KEY=ci-only-blind-index-key-0123456789abcdef compliance-desk:ci manage check
+      - name: Compose file is valid
+        run: cp .env.example .env && sed -i 's/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=x/;s/^PGPASSWORD=$/PGPASSWORD=y/' .env && docker compose config -q

@@ -1,0 +1,8 @@
+[Unit]
+Description=Compliance Desk job: %i
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/compliance-desk
+ExecStart=/usr/bin/docker compose run --rm web jobs %i

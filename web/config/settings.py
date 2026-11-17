@@ -5,7 +5,8 @@ Required in production:
   Fernet keys, newest first), BLIND_INDEX_KEY (32+ characters), PGHOST, PGDATABASE,
   PGUSER, PGPASSWORD.
 Optional: DJANGO_DEBUG (default 0), DJANGO_SECURE_SSL_REDIRECT (default 1),
-  RISK_SETTINGS_VERSION, PGPORT.
+  DJANGO_CSRF_TRUSTED_ORIGINS (e.g. https://compliance.sacco.co.ke), RISK_SETTINGS_VERSION,
+  PGPORT, and the job, import and email settings further down. See docs/DEPLOYMENT.md.
 """
 import os
 from pathlib import Path
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",          # serves static files from the app itself
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -115,13 +117,18 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
+    SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# HSTS preload commits the whole domain to HTTPS in browsers' built-in lists; decide per SACCO.
+SILENCED_SYSTEM_CHECKS = ["security.W021"]
 
 # Login lockout: 5 failures locks the username for 15 minutes.
 # Use a shared cache (e.g. Redis) when running more than one app process.
-CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+# The login lockout counter is kept in the database cache so every app process
+# (gunicorn worker) shares it. `manage.py createcachetable` creates the table.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "django_cache"}}
 LOGIN_MAX_FAILURES = 5
 LOGIN_LOCKOUT_SECONDS = 15 * 60
 
@@ -132,6 +139,13 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+                    if not DEBUG and env_bool("STATIC_MANIFEST", True)
+                    else "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in env("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 STATICFILES_DIRS = [BASE_DIR / "static"]
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

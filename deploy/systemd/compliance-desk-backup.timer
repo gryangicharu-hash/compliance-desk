@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly Compliance Desk database backup
+
+[Timer]
+OnCalendar=*-*-* 00:45:00 Africa/Nairobi
+Persistent=true
+
+[Install]
+WantedBy=timers.target

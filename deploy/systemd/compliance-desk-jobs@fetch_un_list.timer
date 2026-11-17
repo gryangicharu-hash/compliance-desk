@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily UN sanctions list check
+
+[Timer]
+OnCalendar=*-*-* 05:15:00 Africa/Nairobi
+Persistent=true
+
+[Install]
+WantedBy=timers.target

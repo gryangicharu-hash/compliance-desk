@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% block title %}Staff · Compliance Desk{% endblock %}
+{% block content %}
+<h1>Staff accounts</h1>
+<p class="muted">Accounts are deactivated, never deleted, so the audit trail always shows who did what. Everyone except front office must use two-factor login.</p>
+<section class="card"><h2>Add a member of staff</h2>
+<form method="post" class="f">{% csrf_token %}{{ form.as_p }}<p class="full"><button class="btn primary" type="submit">Create account</button></p></form></section>
+<section class="card"><h2>Accounts</h2>
+<div class="tablewrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+{% for u in staff %}<tr><td><b>{{ u.username }}</b><br><span class="small muted">{{ u.get_full_name }} {{ u.email }}</span></td>
+<td><form method="post" action="{% url 'accounts:staff_action' u.pk 'role' %}" class="row">{% csrf_token %}<select name="role">{% for v, l in roles %}<option value="{{ v }}"{% if v == u.role %} selected{% endif %}>{{ l }}</option>{% endfor %}</select><button class="btn" type="submit">Change</button></form></td>
+<td class="small">{% if u.is_active %}Active{% else %}<span class="pill s-exited">Deactivated</span>{% endif %}<br>{% if u.mfa_confirmed %}Two-factor set up{% else %}No two-factor yet{% endif %}<br>Last login {{ u.last_login|date:"d M Y H:i"|default:"never" }}</td>
+<td class="row" style="justify-content:flex-start">
+<form method="post" action="{% url 'accounts:staff_action' u.pk 'reset-password' %}">{% csrf_token %}<button class="btn" type="submit">Reset password</button></form>
+<form method="post" action="{% url 'accounts:staff_action' u.pk 'reset-2fa' %}">{% csrf_token %}<button class="btn" type="submit">Reset two-factor</button></form>
+{% if u.is_active %}<form method="post" action="{% url 'accounts:staff_action' u.pk 'deactivate' %}">{% csrf_token %}<button class="btn" type="submit">Deactivate</button></form>
+{% else %}<form method="post" action="{% url 'accounts:staff_action' u.pk 'reactivate' %}">{% csrf_token %}<button class="btn" type="submit">Reactivate</button></form>{% endif %}
+</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

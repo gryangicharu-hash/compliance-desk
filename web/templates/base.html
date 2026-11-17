@@ -19,11 +19,12 @@
     {% if user.role in 'compliance_officer administrator auditor' %}<a href="{% url 'corebanking:imports' %}" class="{% if request.resolver_match.app_name == 'corebanking' and request.resolver_match.url_name != 'guarantors' or request.resolver_match.app_name == 'jobs' %}on{% endif %}">Data and jobs</a>{% endif %}
     {% if user.role in 'compliance_officer senior_management auditor' %}<a href="{% url 'assurance:board' %}" class="{% if request.resolver_match.url_name == 'board' %}on{% endif %}">Board report</a>
     <a href="{% url 'assurance:list' %}" class="{% if request.resolver_match.app_name == 'assurance' and request.resolver_match.url_name != 'board' %}on{% endif %}">Audit</a>{% endif %}
+    {% if user.role == 'administrator' %}<a href="{% url 'accounts:staff' %}" class="{% if request.resolver_match.url_name == 'staff' %}on{% endif %}">Staff</a>{% endif %}
     {% if user.role != 'front_office' %}<a href="{% url 'audittrail:list' %}" class="{% if request.resolver_match.app_name == 'audittrail' %}on{% endif %}">Audit trail</a>{% endif %}
   </nav>
   {% endif %}
   {% if user.is_authenticated %}
-  <div class="who"><span>{{ user }} · {{ user.get_role_display }}</span>
+  <div class="who"><span>{{ user }} · {{ user.get_role_display }}</span><a href="{% url 'accounts:password' %}">Password</a>
     <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn" type="submit">Log out</button></form>
   </div>
   {% endif %}

@@ -3,3 +3,6 @@
 Django>=5.2,<5.3          # 5.2 is a long-term support release
 psycopg[binary]>=3.2,<3.3
 cryptography>=42
+gunicorn>=23,<24          # application server
+whitenoise>=6.7,<7        # static files
+segno>=1.6,<2            # QR code for two-factor setup, drawn on the server

@@ -25,6 +25,7 @@ class User(AbstractUser):
     mfa_secret_enc = models.TextField(blank=True, default="")      # encrypted with FieldCipher
     mfa_confirmed = models.BooleanField(default=False)
     mfa_last_step = models.BigIntegerField(null=True, blank=True)  # replay protection
+    must_change_password = models.BooleanField(default=False)      # set for new accounts and password resets
 
     objects = ComplianceUserManager()
 

@@ -119,3 +119,50 @@ class DatabaseRoleTests(TestCase):
     def test_no_role_until_two_factor_done(self):
         self.assertEqual(self.run_as(self.co, {"mfa_ok": False}), ("", ""))
         self.assertEqual(self.run_as(self.co, {"mfa_ok": True}), ("compliance_officer", ""))
+
+
+class StaffAdminTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user("admin1", password=PW, role=Role.ADMINISTRATOR, mfa_confirmed=True)
+        self.client.force_login(self.admin)
+        s = self.client.session
+        s["mfa_ok"] = True
+        s.save()
+
+    def test_create_account_with_one_time_password_then_forced_change(self):
+        r = self.client.post(reverse("accounts:staff"), {"username": "jane.teller", "first_name": "Jane",
+                             "last_name": "Atieno", "email": "", "role": "front_office"}, follow=True)
+        msg = [str(m) for m in r.context["messages"]][0]
+        pw = msg.split("One-time password: ")[1].split(" ")[0]
+        u = User.objects.get(username="jane.teller")
+        self.assertTrue(u.must_change_password and u.check_password(pw))
+        self.client.logout()
+        self.client.post(reverse("accounts:login"), {"username": "jane.teller", "password": pw})
+        self.assertRedirects(self.client.get(reverse("home")), reverse("accounts:password"))
+        self.client.post(reverse("accounts:password"), {"old_password": pw, "new_password1": "Mango tree by the river 7",
+                                                        "new_password2": "Mango tree by the river 7"})
+        u.refresh_from_db()
+        self.assertFalse(u.must_change_password)
+        self.assertEqual(self.client.get(reverse("home")).status_code, 200)
+
+    def test_deactivate_reset_and_limits(self):
+        co = User.objects.create_user("co", password=PW, role=Role.COMPLIANCE_OFFICER, mfa_confirmed=True)
+        self.client.post(reverse("accounts:staff_action", args=[co.pk, "reset-2fa"]))
+        self.client.post(reverse("accounts:staff_action", args=[co.pk, "deactivate"]))
+        co.refresh_from_db()
+        self.assertEqual((co.mfa_confirmed, co.is_active), (False, False))
+        self.client.post(reverse("accounts:staff_action", args=[self.admin.pk, "deactivate"]))
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_active)                     # not your own account
+        co.is_active = True
+        co.save()
+        self.client.force_login(co)
+        s = self.client.session
+        s["mfa_ok"] = True
+        s.save()
+        self.assertEqual(self.client.get(reverse("accounts:staff")).status_code, 403)
+
+    def test_health_check_is_open(self):
+        self.client.logout()
+        r = self.client.get("/healthz")
+        self.assertEqual((r.status_code, r.content), (200, b"ok"))

@@ -21,7 +21,7 @@ class LoginAndMfaRequired:
     def __call__(self, request):
         path = request.path
         login = reverse("accounts:login")
-        if path.startswith(settings.STATIC_URL) or path == login:
+        if path.startswith(settings.STATIC_URL) or path in (login, "/healthz"):
             return self.get_response(request)
         if not request.user.is_authenticated:
             return redirect(f"{login}?next={request.get_full_path()}")
@@ -30,6 +30,10 @@ class LoginAndMfaRequired:
             if path not in allowed:
                 target = "accounts:mfa_verify" if request.user.mfa_confirmed else "accounts:mfa_setup"
                 return redirect(target)
+        elif request.user.must_change_password:
+            allowed = {reverse("accounts:password"), reverse("accounts:logout")}
+            if path not in allowed:
+                return redirect("accounts:password")
         return self.get_response(request)
 
 

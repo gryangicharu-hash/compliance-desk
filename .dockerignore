@@ -1,0 +1,6 @@
+.git
+**/__pycache__
+**/*.pyc
+web/staticfiles
+.env
+backups

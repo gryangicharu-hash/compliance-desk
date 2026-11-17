@@ -1,0 +1,41 @@
+# Single-server installation: PostgreSQL and the application. TLS is terminated by a
+# reverse proxy in front (see deploy/nginx.conf). Copy .env.example to .env first.
+# Scheduled jobs run from the host's cron or systemd timers (deploy/systemd/).
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      APP_DB_PASSWORD: ${PGPASSWORD:?set PGPASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/db-init.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+      - ./deploy/backup.sh:/usr/local/bin/compliance-backup:ro
+      - ${BACKUP_DIR_HOST:-./backups}:/backups
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      retries: 20
+
+  web:
+    build: .
+    image: compliance-desk:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PGHOST: db
+      PGUSER: compliance_app
+      PGDATABASE: compliance_desk
+      IMPORT_INBOX: /srv/inbox
+      POSTGRES_PASSWORD: ""            # the app never gets the superuser password
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"          # only the reverse proxy on this host reaches the app
+    volumes:
+      - ${IMPORT_INBOX_HOST:-./inbox}:/srv/inbox
+
+volumes:
+  pgdata:
