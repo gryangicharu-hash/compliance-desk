@@ -4,10 +4,12 @@ AML/CFT compliance platform for Kenyan deposit-taking SACCOs, built around the
 Proceeds of Crime and Anti-Money Laundering Act (POCAMLA) and its Regulations
 (2023 amendments).
 
-**Status: v0.3.0-alpha.** Engine, AML audit module and database are built and tested. The web
+**Status: v0.4.0-alpha.** Engine, AML audit module and database are built and tested. The web
 application (`web/`, Django) has stage 1: logins with two-factor authentication, roles,
-member onboarding with risk rating, approval of PEPs, and the audit trail. Screening, cases,
-reports and scheduled jobs come next; see [docs/ROADMAP.md](docs/ROADMAP.md).
+member onboarding with risk rating, approval of PEPs, and the audit trail. Stage 2 adds
+sanctions and PEP screening (list uploads, match queue, decisions) and suspicious-activity
+cases (2-day STR clock, filing, STR XML, hidden from front office). Scheduled jobs, imports,
+the audit workspace and the board report come next; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What is here
 

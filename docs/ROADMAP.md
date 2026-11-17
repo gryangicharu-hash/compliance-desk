@@ -12,6 +12,14 @@
   member onboarding with encrypted ID numbers, risk rating, PEP approval with
   segregation of duties, hash-chained append-only audit trail. 19 web tests.
 
+- v0.4.0-alpha (web stage 2): sanctions and PEP list uploads (UN XML or CSV; versioned,
+  bad files rejected and recorded while the list in use stays unchanged); every member
+  re-screened when a list loads; screening hold at onboarding; match queue with recorded
+  reasons and segregation (the onboarding officer cannot decide); confirmed sanctions match
+  blocks the member and opens a case. Suspicious-activity cases: 2-day STR clock, filing
+  with FRC reference, closing with reasons, STR XML download, row-level security so front
+  office cannot see cases even directly in the database (tipping-off). 32 web tests.
+
 ## Next: web application, remaining stages
 
 Built on Django with the engine as a library.
@@ -21,8 +29,7 @@ Built on Django with the engine as a library.
 2. Logins with two-factor authentication; roles: front office, compliance officer,
    senior management, auditor, administrator. Set `app.user_role` on every
    database connection for row-level security.
-3. Screens from the prototype: overview, members, onboarding, screening queue,
-   guarantors, reviews, cases and reports, audit trail, risk settings.
+3. Remaining screens from the prototype: overview, guarantors, reviews, reports, risk settings.
 4. Scheduled jobs: daily UN list download and re-screen; nightly transaction import
    and monitoring; weekly cash report reminder; review and ID-expiry reminders.
 5. Imports: member and transaction files from the main core banking systems used by pilot SACCOs.
