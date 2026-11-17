@@ -88,7 +88,8 @@ class MonitoringTests(ImportTestCase):
             self.assertIn("Possible structuring", Case.objects.get().reason)
 
     def test_weekly_cash_report(self):
-        week = services.pending_weeks()[0]
+        with db_role("compliance_officer"):
+            week = services.pending_weeks()[0]
         self.assertEqual(len(week["alerts"]), 1)
         end = week["period_end"]
         self.assertEqual(end.weekday(), 4)                                # Friday
@@ -100,7 +101,8 @@ class MonitoringTests(ImportTestCase):
         self.client.post(url, {"frc_reference": "CTR-2026-0042"})
         self.assertEqual(CashReport.objects.get().rows, 1)
         self.assertEqual(self.alerts(rule="LARGE_CASH")[0].status, "reported")
-        self.assertEqual(services.pending_weeks(), [])
+        with db_role("compliance_officer"):
+            self.assertEqual(services.pending_weeks(), [])
         self.as_user(self.ceo)
         self.assertEqual(self.client.get(reverse("monitoring:cash_report_csv", args=[end.isoformat()])).status_code, 403)
 
