@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block title %}Screening lists · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Screening lists</h1><a href="{% url 'screening:queue' %}">Back to matches</a></div>
+{% if can_load %}<section class="card"><h2>Load a list</h2>
+  <p class="small muted">Loading a new version replaces the one in use and re-screens every member at once. A file that can't be read is rejected and the list in use stays unchanged.
+  CSV files need these columns: <span class="mono">{{ csv_columns }}</span> (only <span class="mono">ref</span> and <span class="mono">name</span> are required; separate aliases with semicolons).</p>
+  <form method="post" enctype="multipart/form-data" class="f">{% csrf_token %}{{ form.as_p }}
+    <p class="full"><button class="btn primary" type="submit">Load and re-screen all members</button></p></form>
+</section>{% endif %}
+<section class="card"><h2>Versions</h2>
+<div class="tablewrap"><table><thead><tr><th>List</th><th>Status</th><th>Entries</th><th>Loaded</th><th>File</th></tr></thead><tbody>
+{% for v in versions %}<tr><td><b>{{ v.list_name }}</b><br><span class="small muted">{{ v.get_kind_display }}</span></td>
+<td><span class="pill {% if v.status == 'current' %}s-active{% elif v.status == 'rejected' %}r-high{% else %}s-exited{% endif %}">{{ v.get_status_display }}</span>{% if v.error %}<br><span class="small">{{ v.error }}</span>{% endif %}</td>
+<td class="mono">{{ v.entry_count }}</td><td class="small">{{ v.loaded_at|date:"d M Y H:i" }}<br>{{ v.loaded_by }}</td>
+<td class="small mono">{{ v.source }}<br>sha256 {{ v.sha256|slice:":16" }}…</td></tr>
+{% empty %}<tr><td colspan="5" class="muted">No lists loaded yet. Members can't be screened until a list is loaded.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

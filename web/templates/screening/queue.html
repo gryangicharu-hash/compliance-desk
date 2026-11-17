@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block title %}Screening · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Screening matches</h1><a class="btn" href="{% url 'screening:lists' %}">Lists in use</a></div>
+<p class="muted">Members, group officials and beneficial owners are screened at onboarding and every time a list is loaded. Members with an open sanctions match are on hold until decided. A confirmed sanctions match blocks the member and opens a case.</p>
+<section class="card"><h2>To decide ({{ hits|length }})</h2>
+<div class="tablewrap"><table><thead><tr><th>List entry</th><th>Name screened</th><th>Match</th><th>Decision</th></tr></thead><tbody>
+{% include "screening/_hit_rows.html" with hits=hits %}
+</tbody></table></div></section>
+<section class="card"><h2>Recently decided</h2>
+<div class="tablewrap"><table><thead><tr><th>List entry</th><th>Name screened</th><th>Match</th><th>Decision</th></tr></thead><tbody>
+{% include "screening/_hit_rows.html" with hits=decided %}
+</tbody></table></div></section>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% for h in hits %}<tr>
+  <td><b>{{ h.entry_name }}</b><br><span class="small muted">{{ h.list_name }} · {{ h.entry_ref }}</span></td>
+  <td><a href="{% url 'members:detail' h.member.member_no %}">{{ h.subject_name }}</a>{% if h.subject_role != 'member' %}<br><span class="small muted">{{ h.get_subject_role_display|default:h.subject_role }} of {{ h.member.name }}</span>{% endif %}</td>
+  <td class="mono">{% widthratio h.score 1 100 %}%<br><span class="small muted">{{ h.confidence }} · DOB {{ h.dob_check }}</span></td>
+  <td>{% if h.status == 'to_review' %}
+    {% if can_decide %}<form method="post" action="{% url 'screening:decide' h.pk %}" class="f" style="grid-template-columns:1fr">{% csrf_token %}
+      <input type="hidden" name="back" value="{{ request.path }}">
+      <p><select name="decision" aria-label="Decision"><option value="false_positive">False positive</option><option value="confirmed">Confirmed match</option></select></p>
+      <p><textarea name="note" rows="2" placeholder="Reason, e.g. date of birth and nationality differ" aria-label="Reason" required></textarea></p>
+      <p><button class="btn" type="submit">Record decision</button></p></form>
+    {% else %}<span class="pill r-medium">To review</span>{% endif %}
+  {% else %}<span class="pill {% if h.status == 'confirmed' %}r-high{% else %}r-low{% endif %}">{{ h.get_status_display }}</span><br>
+    <span class="small muted">{{ h.decided_by }} · {{ h.decided_at|date:"d M Y H:i" }}<br>{{ h.decision_note }}</span>{% endif %}</td>
+</tr>{% empty %}<tr><td colspan="4" class="muted">None.</td></tr>{% endfor %}

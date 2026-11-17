@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 from django.utils import timezone
 
-from accounts.security import cipher
+from accounts.security import cipher, db_role
 from audittrail.services import record
 from compliance_core import models as core
 from compliance_core.risk import RiskInputs, RiskSettings, assess
@@ -33,8 +33,21 @@ def to_core(m: Member) -> core.Member:
         beneficial_owners=[as_person(p) for p in persons if p.kind == MemberPerson.Kind.BENEFICIAL_OWNER])
 
 
+def needs_approval(member: Member) -> bool:
+    ra = member.latest_assessment
+    return (member.pep != Pep.NONE and member.pep_approved_by_id is None) or (ra is not None and ra.rating in ("high", "prohibited"))
+
+
+def _inputs(member: Member) -> RiskInputs:
+    from cases.models import Case
+    from screening.services import screening_status
+    with db_role("system"):          # the rating must reflect open cases whoever triggered it
+        open_case = Case.objects.filter(member=member, status=Case.Status.OPEN).exists()
+    return RiskInputs(screening=screening_status(member), open_case=open_case, expected_cash=member.expected_cash)
+
+
 def reassess(member: Member, actor: str) -> RiskAssessment:
-    result = assess(to_core(member), RiskInputs(expected_cash=member.expected_cash),
+    result = assess(to_core(member), _inputs(member),
                     RiskSettings(version=settings.RISK_SETTINGS_VERSION), as_of=timezone.localdate())
     ra = RiskAssessment.objects.create(
         member=member, score=result.score, points=result.points, base_rating=result.base_rating.value,
@@ -83,8 +96,14 @@ def onboard(*, data: dict, persons: list[PersonInput], user) -> Member:
         MemberPerson.objects.create(member=member, kind=p.kind, name=p.name, role=p.role, ownership_pct=p.ownership_pct)
     record(user.username, "member.onboarded", member.member_no,
            {"type": member.member_type, "channel": member.channel, "persons": len(persons)})
+    from screening.services import screen
+    hits = screen(member, user.username)
     ra = reassess(member, user.username)
-    if member.pep == Pep.NONE and ra.rating in ("low", "medium"):
+    if any(h.kind == "sanctions" for h in hits):
+        member.status = Status.SCREENING_HOLD
+        member.save(update_fields=["status", "updated_at"])
+        record(user.username, "member.screening_hold", member.member_no, {"hits": len(hits)})
+    elif member.pep == Pep.NONE and ra.rating in ("low", "medium"):
         member.status = Status.ACTIVE
         member.save(update_fields=["status", "updated_at"])
         record(user.username, "member.activated", member.member_no, {"rating": ra.rating})
@@ -104,6 +123,8 @@ def approve(member: Member, user) -> Member:
         raise ValidationError("Record the PEP's source of wealth before approving.")
     if member.onboarded_by_id == user.pk:
         raise ValidationError("The person who onboarded a member cannot also approve them.")
+    if member.hits.filter(status="to_review").exists():
+        raise ValidationError("Resolve this member's screening matches before approving.")
     if member.pep != Pep.NONE:
         member.pep_approved_by, member.pep_approved_at = user, timezone.now()
     member.status = Status.ACTIVE

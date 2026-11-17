@@ -27,3 +27,30 @@ def role_required(*roles: str):
 
 def mask(value: str, visible: int = 3) -> str:
     return "•" * max(0, len(value) - visible) + value[-visible:] if value else ""
+
+
+from contextlib import contextmanager
+
+from django.db import connection
+
+
+def current_db_role() -> str:
+    with connection.cursor() as cur:
+        cur.execute("SELECT coalesce(current_setting('app.user_role', true), '')")
+        return cur.fetchone()[0]
+
+
+@contextmanager
+def db_role(role: str):
+    """Run trusted application code under a given database role, then restore the
+    previous one. Used by background jobs ('system') and by risk re-assessment, which
+    must know whether a case is open even when a front-office user triggered it. The
+    result shown to that user never reveals the case (see members.views)."""
+    previous = current_db_role()
+    with connection.cursor() as cur:
+        cur.execute("SELECT set_config('app.user_role', %s, false)", [role])
+    try:
+        yield
+    finally:
+        with connection.cursor() as cur:
+            cur.execute("SELECT set_config('app.user_role', %s, false)", [previous])

@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block title %}Open a case · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Open a case: {{ m.name }}</h1><a href="{% url 'members:detail' m.member_no %}">Cancel</a></div>
+<section class="card">
+  <p class="muted small">Opening a case starts the 2-day clock for deciding whether to file a suspicious transaction report. Don't tell the member: tipping-off is an offence.</p>
+  <form method="post" class="f" style="grid-template-columns:1fr">{% csrf_token %}{{ form.as_p }}
+    <p><button class="btn primary" type="submit">Open case</button></p></form>
+</section>
+{% endblock %}

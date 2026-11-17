@@ -81,7 +81,12 @@ jobs:
             echo "=====BEGIN $f"; cat "$f"; echo "=====END $f"
           done
       - run: python manage.py check
+      - name: Database role without superuser rights, so row-level security really applies
+        run: psql -d postgres -c "CREATE ROLE compliance_app LOGIN CREATEDB PASSWORD 'ci-only'"
       - run: python manage.py test --verbosity 2
+        env:
+          PGUSER: compliance_app
+          PGPASSWORD: ci-only
       - name: Migrations must be committed
         run: |
           git status --porcelain -- '*/migrations/*.py'

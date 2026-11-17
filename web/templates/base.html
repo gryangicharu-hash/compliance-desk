@@ -12,6 +12,8 @@
   <nav>
     <a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}on{% endif %}">Overview</a>
     <a href="{% url 'members:list' %}" class="{% if request.resolver_match.app_name == 'members' %}on{% endif %}">Members</a>
+    {% if user.role in 'compliance_officer senior_management auditor' %}<a href="{% url 'screening:queue' %}" class="{% if request.resolver_match.app_name == 'screening' %}on{% endif %}">Screening</a>
+    <a href="{% url 'cases:list' %}" class="{% if request.resolver_match.app_name == 'cases' %}on{% endif %}">Cases</a>{% endif %}
     {% if user.role != 'front_office' %}<a href="{% url 'audittrail:list' %}" class="{% if request.resolver_match.app_name == 'audittrail' %}on{% endif %}">Audit trail</a>{% endif %}
   </nav>
   {% endif %}

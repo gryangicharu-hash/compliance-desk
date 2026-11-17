@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}{{ c.ref }} · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><div><span class="mono muted">{{ c.ref }} · {{ c.get_case_type_display }}</span>
+  <h1>{{ c.member.name }}</h1><p><span class="pill {% if c.status == 'open' %}r-medium{% else %}s-exited{% endif %}">{{ c.get_status_display }}</span></p></div>
+  {% if can_decide or c.status == 'str_filed' %}<a class="btn" href="{% url 'cases:str_xml' c.ref %}">Download STR draft (XML)</a>{% endif %}</div>
+{% if clock %}<div class="msg {% if clock.status == 'overdue' %}error{% elif clock.status == 'due soon' %}warning{% else %}success{% endif %}">
+  {% if clock.status == 'overdue' %}The 2-day deadline passed on {{ c.str_due_at|date:"d M Y H:i" }}. File now and record the reason for the delay.
+  {% else %}{{ clock.hours_left|floatformat:0 }} hours left to decide: due {{ c.str_due_at|date:"d M Y H:i" }}.{% endif %}</div>{% endif %}
+<div class="grid">
+  <section class="card"><h2>Case</h2><dl class="kv">
+    <dt>Member</dt><dd><a href="{% url 'members:detail' c.member.member_no %}">{{ c.member.member_no }}</a></dd>
+    <dt>Suspicion formed</dt><dd>{{ c.suspicion_formed_at|date:"d M Y H:i" }}</dd>
+    <dt>Opened by</dt><dd>{{ c.opened_by }}</dd>
+    <dt>Reason</dt><dd>{{ c.reason|linebreaksbr }}</dd>
+    {% if c.decided_by %}<dt>Decided</dt><dd>{{ c.decided_by }} · {{ c.decided_at|date:"d M Y H:i" }}</dd><dt>Note</dt><dd>{{ c.decision_note|linebreaksbr }}</dd>{% endif %}
+    {% if c.frc_reference %}<dt>FRC reference</dt><dd class="mono">{{ c.frc_reference }}</dd>{% endif %}
+  </dl></section>
+  {% if can_decide %}<section class="card"><h2>Decide</h2>
+    <h3>File an STR</h3><p class="small muted">Upload the draft to goAML, then record the reference it gives you.</p>
+    <form method="post" action="{% url 'cases:decide' c.ref 'file' %}" class="f" style="grid-template-columns:1fr">{% csrf_token %}{{ file_form.as_p }}<p><button class="btn primary" type="submit">Record STR as filed</button></p></form>
+    {% if c.case_type != 'sanctions_match' %}<h3 style="margin-top:16px">Close as not suspicious</h3>
+    <form method="post" action="{% url 'cases:decide' c.ref 'close' %}" class="f" style="grid-template-columns:1fr">{% csrf_token %}{{ close_form.as_p }}<p><button class="btn" type="submit">Close case</button></p></form>{% endif %}
+  </section>{% endif %}
+</div>
+<section class="card"><h2>History</h2><div class="tablewrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>
+{% for e in history %}<tr><td class="small">{{ e.at|date:"d M Y H:i" }}</td><td class="small">{{ e.actor }}</td><td>{{ e.action }}</td><td class="small mono">{{ e.detail }}</td></tr>{% empty %}<tr><td colspan="4" class="muted">No entries.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

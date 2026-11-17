@@ -5,8 +5,14 @@
     <p>{% if ra %}<span class="pill r-{{ ra.rating }}">{{ ra.rating|title }} risk</span>{% endif %}
        <span class="pill s-{{ m.status }}">{{ m.get_status_display }}</span>
        {% if ra %}<span class="pill" style="background:var(--info-soft);color:var(--info)">{{ ra.due_diligence|title }} due diligence</span>{% endif %}</p></div>
+  <div class="row" style="justify-content:flex-end">
+  {% if can_decide %}<form method="post" action="{% url 'screening:rescreen' m.member_no %}">{% csrf_token %}<button class="btn" type="submit">Re-screen</button></form>
+    {% if m.status != 'blocked' %}<a class="btn" href="{% url 'cases:open' m.member_no %}">Open a case</a>{% endif %}{% endif %}
   {% if can_approve %}<form method="post" action="{% url 'members:approve' m.member_no %}">{% csrf_token %}<button class="btn primary" type="submit">Approve relationship</button></form>{% endif %}
+  </div>
 </div>
+{% if m.status == 'screening_hold' %}<div class="msg warning">On hold: a possible sanctions match is waiting for the compliance officer's decision. Don't process transactions{% if not sees_cases %} and don't discuss the reason with the member{% endif %}.</div>{% endif %}
+{% if m.status == 'blocked' %}<div class="msg error">Blocked. No transactions may be processed. Refer any contact from this member to the compliance officer.</div>{% endif %}
 {% if m.status == 'pending_approval' and not can_approve %}<div class="msg warning">Waiting for senior management approval.{% if m.pep != 'none' %} PEPs need approval and a recorded source of wealth (reg. 22).{% endif %}</div>{% endif %}
 <div class="grid">
   <section class="card"><h2>Profile</h2><dl class="kv">
@@ -31,11 +37,18 @@
   {% if ra %}
     {% for name, weight, pts in factors %}<div class="bar"><span>{{ name }} <span class="muted small">{{ weight }}%</span></span><div class="track"><div class="fill" style="width:{{ pts }}%"></div></div><span class="mono">{{ pts }} pts</span></div>{% endfor %}
     {% if ra.reasons %}<h3>Why</h3><ul class="small">{% for r in ra.reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
-    {% if ra.overrides %}<h3>Rules applied</h3><ul class="small">{% for o in ra.overrides %}<li>{{ o }}</li>{% endfor %}</ul>{% endif %}
+    {% if overrides %}<h3>Rules applied</h3><ul class="small">{% for o in overrides %}<li>{{ o }}</li>{% endfor %}</ul>{% endif %}
     <p class="small muted">Next review {{ ra.next_review_on|date:"d M Y"|default:"—" }} · settings {{ ra.settings_version }} · assessed {{ ra.assessed_at|date:"d M Y H:i" }} by {{ ra.assessed_by }}</p>
   {% else %}<p class="muted">Not yet assessed.</p>{% endif %}
   </section>
 </div>
+{% if sees_cases %}<div class="grid">
+<section class="card"><h2>Screening</h2>
+  <div class="tablewrap"><table><thead><tr><th>List entry</th><th>Name screened</th><th>Match</th><th>Decision</th></tr></thead><tbody>
+  {% include "screening/_hit_rows.html" with hits=hits %}</tbody></table></div></section>
+<section class="card"><h2>Cases</h2>
+  {% if cases %}<ul class="small">{% for c in cases %}<li><a class="mono" href="{% url 'cases:detail' c.ref %}">{{ c.ref }}</a> {{ c.get_case_type_display }} · {{ c.get_status_display }}</li>{% endfor %}</ul>{% else %}<p class="muted small">No cases.</p>{% endif %}</section>
+</div>{% endif %}
 <section class="card"><h2>History</h2>
 <div class="tablewrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>
 {% for e in history %}<tr><td class="small">{{ e.at|date:"d M Y H:i" }}</td><td class="small">{{ e.actor }}</td><td>{{ e.action }}</td><td class="small mono">{{ e.detail }}</td></tr>{% empty %}<tr><td colspan="4" class="muted">No entries.</td></tr>{% endfor %}

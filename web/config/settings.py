@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     "accounts",
     "audittrail",
     "members",
+    "screening",
+    "cases",
 ]
 
 MIDDLEWARE = [
@@ -132,6 +134,9 @@ BLIND_INDEX_KEY = env("BLIND_INDEX_KEY", required=True)
 
 # The board-approved risk settings in force. Until a version is approved, assessments
 # are labelled with this placeholder so they can be found and re-run later.
+# Uploaded list files larger than this are refused.
+LIST_UPLOAD_MAX_BYTES = 50 * 1024 * 1024
+
 RISK_SETTINGS_VERSION = env("RISK_SETTINGS_VERSION", "default-not-yet-approved")
 INSTITUTION_NAME = env("INSTITUTION_NAME", "Demo SACCO")
 

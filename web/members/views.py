@@ -15,6 +15,7 @@ from .models import Member, MemberPerson, RiskAssessment, Status
 
 ALL_STAFF = (Role.FRONT_OFFICE, Role.COMPLIANCE_OFFICER, Role.SENIOR_MANAGEMENT, Role.AUDITOR, Role.ADMINISTRATOR)
 CAN_ONBOARD = (Role.FRONT_OFFICE, Role.COMPLIANCE_OFFICER)
+CASE_ROLES = (Role.COMPLIANCE_OFFICER, Role.SENIOR_MANAGEMENT, Role.AUDITOR)
 
 
 def _with_rating(qs):
@@ -64,7 +65,17 @@ def member_detail(request, member_no):
         weights = RiskSettings(version="").weights
         factors = [(k.title(), weights.get(k, 0), v) for k, v in ra.points.items()]
     history = AuditEvent.objects.filter(subject=member.member_no).order_by("-seq")[:20]
+    sees_cases = request.user.has_role(*CASE_ROLES)
+    overrides = list(ra.overrides) if ra else []
+    if not sees_cases:      # tipping-off: never reveal a case to front office, even indirectly
+        overrides = [o if "case" not in o.lower() else "Additional compliance factors (restricted)" for o in overrides]
+    from cases.models import Case
+    from screening.models import Hit
     return render(request, "members/detail.html", {
+        "overrides": overrides, "sees_cases": sees_cases,
+        "hits": Hit.objects.filter(member=member).select_related("member", "decided_by") if sees_cases else [],
+        "cases": Case.objects.filter(member=member) if sees_cases else [],
+        "can_decide": request.user.has_role(Role.COMPLIANCE_OFFICER),
         "m": member, "ra": ra, "factors": factors, "id_masked": mask(cipher().decrypt(member.id_number_enc)),
         "officials": member.persons.filter(kind=MemberPerson.Kind.OFFICIAL),
         "owners": member.persons.filter(kind=MemberPerson.Kind.BENEFICIAL_OWNER),
