@@ -37,12 +37,14 @@ separately from the backups. To rotate the encryption key, put the new key first
 sudo cp deploy/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now compliance-desk-jobs@fetch_un_list.timer \
-     compliance-desk-jobs@nightly.timer compliance-desk-backup.timer
+     compliance-desk-jobs@nightly.timer compliance-desk-jobs@sync_restrictions.timer \
+     compliance-desk-backup.timer
 ```
 
 | Time (Nairobi) | What |
 | --- | --- |
-| 00:45 | Database backup to `BACKUP_DIR_HOST` (default `./backups`) |
+| every 15 min | Hold and freeze instructions to core banking (see docs/OPERATIONS.md) |
+| 00:45 | Database and KYC document backup to `BACKUP_DIR_HOST` (default `./backups`) |
 | 01:30 | Nightly: imports, guarantor network, monitoring, reminder email |
 | 05:15 | UN sanctions list check |
 
@@ -56,6 +58,10 @@ inside are already encrypted with the field key, which is not in the backup.
 The application's own database login can't take a complete backup (row-level security
 hides cases, alerts and audit papers from it), which is why the backup runs as the
 database superuser inside the database container.
+
+Before go-live, agree with the core banking supplier how holds and freezes reach their
+system (web link or file) and how their list of restricted accounts comes back
+(docs/OPERATIONS.md, "Holds and freezes in core banking"). Test it with a demo member.
 
 ## 4. Test the restore (monthly, and before go-live)
 

@@ -28,6 +28,18 @@ your next login.
    - **Screening hold**: a possible sanctions match. Do not process any transaction.
      **Don't tell the member why**; refer them to the compliance officer.
 
+**Update a member's details** (*member page → Edit details*): change what is out of date
+and give the reason. The old values are kept. A change of name, date of birth, nationality,
+ID number, officials or owners re-screens the member; a member who becomes a PEP goes back
+for senior management approval.
+
+**Store KYC documents** (*member page → KYC documents*): scan or photograph the document
+(PDF, JPEG or PNG, up to 10 MB), choose its type, add the expiry date for an ID. When a
+document is replaced, mark the old one as replaced with the reason; it stays on file.
+
+**Record an exit** (*member page → Record exit*): the date and the reason. If the system
+says to refer the request to the compliance officer, do so without explaining to the member.
+
 **Never discuss with a member** any suspicion, case or alert. Telling them (tipping-off)
 is an offence under POCAMLA. You will see "Additional compliance factors (restricted)"
 on some members: that is deliberate.
@@ -44,6 +56,15 @@ expiring IDs, and any failed scheduled job.
   match for a member you onboarded yourself.
 - A confirmed sanctions match blocks the member and opens a case: freeze funds and
   report to the FRC without delay.
+
+**Holds in core banking** (*Holds in core banking*): check daily that every hold and freeze
+is applied in the core banking system. Anything listed under "Not restricted in core
+banking" must be applied by core banking operations at once.
+
+**Lifting a freeze** (*member page → Lifting the freeze*): only when the person has been
+removed from the list, or the match is shown to be wrong. Record the reason and the evidence
+(for example the UN Security Council delisting notice). A different compliance officer or a
+senior manager decides. The decision and the evidence stay on the member's file.
 
 **Monitoring alerts** (*Monitoring*)
 - Open the alert, look at the transactions and the member's profile.
@@ -86,6 +107,7 @@ the person responsible and the agreed date for each finding.
 - **Board report** (*Board report*): quarterly figures for board papers. Counts only, no
   names. *Download text* to paste into the board pack.
 - View cases and alerts (you can't decide them), and respond to audit findings.
+- **Decide requests to lift a freeze** raised by the compliance officer, from the member's page.
 
 ## Auditor (internal, external, or inspection preparation)
 

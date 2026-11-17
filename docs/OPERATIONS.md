@@ -67,3 +67,64 @@ Cash transactions at or above USD 15,000 go on the **Monitoring → Weekly large
 reports** page, grouped in Saturday-to-Friday weeks due on the Friday. Download the CSV,
 submit it through goAML, then record the FRC's reference. The week reading and whether
 a nil return is needed are open items for the legal adviser (see ROADMAP).
+
+## Holds and freezes in core banking
+
+A member's status here decides what core banking must do with their accounts:
+
+| Status here | Instruction (`restriction`) | Core banking should |
+| --- | --- | --- |
+| Active | `none` | Lift any compliance restriction |
+| Awaiting approval | `no_new_business` | Open no new products or loans until approved |
+| Screening hold | `hold` | Allow no transactions |
+| Blocked (confirmed sanctions match) | `freeze` | Allow no funds to move in or out |
+| Exited | `closed` | Close the membership |
+
+Instructions say what to do, never why (tipping-off). They reach core banking in one or
+both of these ways:
+
+**Web link** (`CORE_BANKING_WEBHOOK_URL`, `CORE_BANKING_WEBHOOK_SECRET`). Each change is
+sent as it happens, oldest first:
+
+```
+POST <CORE_BANKING_WEBHOOK_URL>
+Content-Type: application/json
+X-Compliance-Desk-Delivery: 1234
+X-Compliance-Desk-Signature: sha256=<hex HMAC-SHA256 of the raw body with the shared secret>
+
+{"event":"restriction.changed","id":1234,"member_no":"M000123","restriction":"freeze","previous":"hold","at":"2026-11-17T14:02:11+03:00"}
+```
+
+The receiver must check the signature, apply the instruction, and answer 2xx. It should
+treat `id` as the delivery number and ignore an `id` it has already applied (deliveries can
+repeat after a timeout). Anything else is retried by the `sync_restrictions` job, which
+should run every 15 minutes (`deploy/systemd/compliance-desk-jobs@sync_restrictions.timer`).
+Delivery stops at the first failure so instructions never arrive out of order; after 30
+minutes the overview shows "Restriction changes have not reached core banking".
+
+**File** (`EXPORT_OUTBOX`). Each `sync_restrictions` run writes the full current list,
+`restrictions-<date>-<time>.csv` with a `.sha256` file beside it:
+`member_no,name,restriction,restriction_text,since`. Members not in the file have no
+compliance restriction. The list can also be downloaded from **Holds in core banking**.
+
+**Confirmation back from core banking.** Core banking sends its own list of accounts it
+currently restricts on compliance instruction, daily or more often, as a "Restricted
+accounts" import (by hand or in `<IMPORT_INBOX>/restricted_accounts/`):
+`member_no` (required), `restriction`, `as_at`. Send the full list every time; a file with
+only the header means nothing is restricted. The **Holds in core banking** page and the
+overview then show:
+
+- members held or frozen here before the list was taken but **not restricted in core
+  banking** (overdue: ask core banking operations to apply it at once);
+- members released here but still restricted there;
+- members waiting for the next list;
+- accounts restricted in core banking for other reasons (for information).
+
+## KYC documents
+
+Stored encrypted under `DOCUMENT_ROOT` with the same keys as ID numbers; the sha256 of
+each original is recorded and checked whenever the file is opened, and every opening is in
+the audit trail. Only PDF, JPEG and PNG files are accepted, recognised by their content.
+Replaced documents are kept, marked as replaced. The nightly backup archives the folder
+next to the database dump (`compliance-desk-<date>.documents.tar`); restore it into the
+documents volume together with the database.

@@ -46,6 +46,12 @@
   data. CI now also runs Django's production checks, pip-audit, the image build and a full
   backup-restore test. Docs: DEPLOYMENT, USER_GUIDE, DPIA (draft). 68 web tests.
 
+- v0.8.0-alpha: holds and freezes sent to core banking (signed web link and/or outbox
+  file, retried in order) with reconciliation against core banking's own restricted
+  list; member details editable with encrypted previous values and re-screening;
+  encrypted KYC document storage with fingerprints and logged viewing; exits with
+  tipping-off-safe refusals; two-person lifting of sanctions freezes. 84 web tests.
+
 ## Next: towards a pilot
 
 Built on Django with the engine as a library.
