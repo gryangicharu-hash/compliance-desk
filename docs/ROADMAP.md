@@ -30,7 +30,16 @@
   monitoring, reminder email) with a run log, and a "Needs attention" list on the overview.
   55 web tests. See docs/OPERATIONS.md.
 
-## Next: web application, remaining stages
+- v0.6.0-alpha (web stage 4): audit workspace for the auditor role: engagements with the
+  30-step programme, the 17 automated control tests run over live data and saved with a
+  data fingerprint, reproducible samples, findings drafted from failed tests or raised by
+  hand, management responses, closure with evidence, automatic follow-up at the next
+  engagement, downloadable report. Independence enforced by PostgreSQL (only auditors
+  write working papers; runs and samples frozen; management only reads and responds).
+  Governance records (staff AML training, board approval of the institutional risk
+  assessment), quarterly board report (counts only), periodic member review. 64 web tests.
+
+## Next: towards a pilot
 
 Built on Django with the engine as a library.
 
@@ -44,8 +53,8 @@ Built on Django with the engine as a library.
    their real export files).
 5. Weekly cash report: confirm the week and nil-return reading with the FRC.
 6. Second approval for closing cases and lowering ratings.
-7. Board report screen from `reports.board_summary()`.
-8. Audit workspace for the auditor role: engagements, test runs, samples, programme, findings, report.
+7. Pilot hardening: deployment scripts, backups and restore test, penetration test,
+   user guide, data-protection impact assessment (Kenya Data Protection Act 2019).
 
 ## Open items and owners
 

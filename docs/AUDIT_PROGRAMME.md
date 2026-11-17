@@ -7,6 +7,8 @@ manual, using samples from `random_sample()` or `risk_based_sample()`.
 
 ## How an engagement runs
 
+In the web application this is the **Audit** page (auditor role). The steps below map to its buttons.
+
 1. Open an engagement (auditor role only). Record period and scope.
 2. Run the automated tests. The run is saved permanently with a fingerprint
    (SHA-256) of the data tested.
