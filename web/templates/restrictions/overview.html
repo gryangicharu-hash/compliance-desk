@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% block title %}Holds in core banking · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Holds and freezes in core banking</h1>
+{% if user.role == 'compliance_officer' or user.role == 'administrator' %}<a class="btn" href="{% url 'restrictions:download' %}">Download current list (CSV)</a>{% endif %}</div>
+<p class="muted">A hold or freeze here only protects the SACCO once the core banking system applies it. Every change is sent {% if webhook %}straight to core banking through the web link{% else %}<b>by file only</b> (no web link set up){% endif %}{% if outbox %} and written to the outbox folder{% endif %}. Core banking sends back its list of restricted accounts, imported under <a href="{% url 'corebanking:imports' %}">Data and jobs</a> as "Restricted accounts"; this page compares the two. Instructions say what to do, never why.</p>
+<div class="tiles">{% for label, n in counts.items %}<div class="tile"><div class="v">{{ n }}</div><div class="l">{{ label }}</div></div>{% endfor %}</div>
+
+<section class="card"><h2>Comparison with core banking</h2>
+{% if r.report %}<p class="small muted">Last list from core banking: as at {{ r.report.as_at|date:"d M Y H:i" }}, received {{ r.report.received_at|date:"d M Y H:i" }}.</p>{% else %}<p class="msg warning">No restricted-accounts list received from core banking yet, so nothing is confirmed.</p>{% endif %}
+{% if r.missing %}<h3 style="color:var(--crit)">Not restricted in core banking ({{ r.missing|length }})</h3>
+<p class="small">These members were held or frozen here before core banking's last list, but are not on it. Ask core banking operations to apply the restriction now.</p>
+<ul>{% for s in r.missing %}<li><a href="{% url 'members:detail' s.member.member_no %}">{{ s.member.name }}</a> <span class="mono">{{ s.member.member_no }}</span> · {{ s.get_level_display }} since {{ s.since|date:"d M Y H:i" }}</li>{% endfor %}</ul>{% endif %}
+{% if r.lift_not_applied %}<h3>Released here, still restricted in core banking ({{ r.lift_not_applied|length }})</h3>
+<ul>{% for e in r.lift_not_applied %}<li><a href="{% url 'members:detail' e.member.member_no %}">{{ e.member.name }}</a> <span class="mono">{{ e.member.member_no }}</span> {{ e.detail }}</li>{% endfor %}</ul>{% endif %}
+{% if r.awaiting %}<h3>Waiting for confirmation ({{ r.awaiting|length }})</h3>
+<ul class="small">{% for s in r.awaiting %}<li>{{ s.member.name }} <span class="mono">{{ s.member.member_no }}</span> · {{ s.get_level_display }} since {{ s.since|date:"d M Y H:i" }}</li>{% endfor %}</ul>{% endif %}
+{% if r.extra %}<h3>Restricted in core banking for other reasons ({{ r.extra|length }})</h3>
+<ul class="small">{% for e in r.extra %}<li>{{ e.member.name }} <span class="mono">{{ e.member.member_no }}</span> {{ e.detail }}</li>{% endfor %}</ul>{% endif %}
+{% if r.report and not r.missing and not r.lift_not_applied %}<p class="msg success">Every hold and freeze up to the last list is applied in core banking.</p>{% endif %}
+</section>
+
+{% if webhook %}<section class="card"><h2>Waiting to be sent ({{ pending|length }})</h2>
+{% for c in pending %}<p class="small">{{ c.created_at|date:"d M Y H:i" }} · <span class="mono">{{ c.member.member_no }}</span> → {{ c.get_level_display }} · {{ c.attempts }} attempt(s){% if c.last_error %} · <span style="color:var(--crit)">{{ c.last_error }}</span>{% endif %}</p>{% empty %}<p class="small muted">Nothing waiting.</p>{% endfor %}
+</section>{% endif %}
+
+<section class="card"><h2>Recent changes</h2>
+<div class="tablewrap"><table><thead><tr><th>When</th><th>Member</th><th>Change</th>{% if webhook %}<th>Sent</th>{% endif %}</tr></thead><tbody>
+{% for c in recent %}<tr><td class="small">{{ c.created_at|date:"d M Y H:i" }}</td><td><a href="{% url 'members:detail' c.member.member_no %}">{{ c.member.name }}</a> <span class="mono small">{{ c.member.member_no }}</span></td>
+<td class="small">{{ c.get_previous_display }} → <b>{{ c.get_level_display }}</b></td>{% if webhook %}<td class="small">{{ c.delivered_at|date:"d M H:i"|default:"not yet" }}</td>{% endif %}</tr>
+{% empty %}<tr><td colspan="4" class="muted">No changes yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+
+<section class="card"><h2>Files produced</h2><ul class="small">{% for e in exports %}<li>{{ e.created_at|date:"d M Y H:i" }} · {{ e.filename }} · {{ e.rows }} row(s) · {{ e.destination }} · {{ e.created_by }}</li>{% empty %}<li class="muted">None yet.</li>{% endfor %}</ul></section>
+{% endblock %}

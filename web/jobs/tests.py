@@ -64,7 +64,7 @@ class JobTests(StaffTestCase):
             self.assertEqual(list((Path(inbox) / "members").glob("*.csv")), [])
         self.assertEqual(Member.objects.count(), 4)
         self.assertEqual(set(JobRun.objects.values_list("job", flat=True)),
-                         {"import_inbox", "refresh_guarantors", "run_monitoring", "send_reminders"})
+                         {"import_inbox", "refresh_guarantors", "run_monitoring", "sync_restrictions", "send_reminders"})
 
     def test_reminder_email_has_counts_not_names(self):
         self.co.email = "co@example.org"

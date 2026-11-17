@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}Edit {{ m.name }} · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><div><span class="mono muted">{{ m.member_no }}</span><h1>Edit details</h1></div><a href="{% url 'members:detail' m.member_no %}">Cancel</a></div>
+<section class="card">
+  <p class="muted small">Every change is kept with the previous values and your reason. Changing the name, date of birth, nationality, ID number, officials or owners re-screens the member; any change re-rates them. A member who becomes a PEP needs senior management approval again.</p>
+  <form method="post" class="f" novalidate>{% csrf_token %}
+    {% if form.non_field_errors %}<div class="full">{{ form.non_field_errors }}</div>{% endif %}
+    {{ form.as_p }}
+    <p class="full"><button class="btn primary" type="submit">Save changes</button></p>
+  </form>
+</section>
+{% endblock %}

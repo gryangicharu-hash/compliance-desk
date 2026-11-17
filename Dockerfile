@@ -20,7 +20,7 @@ WORKDIR /srv/compliance-desk/web
 # Static files are collected at build time; placeholder settings only (no secrets in the image).
 RUN DJANGO_SECRET_KEY=build-only FIELD_ENCRYPTION_KEYS=build-only BLIND_INDEX_KEY=build-only \
     python manage.py collectstatic --noinput \
-    && mkdir -p /srv/inbox && chown app:app /srv/inbox
+    && mkdir -p /srv/inbox /srv/outbox /srv/documents && chown app:app /srv/inbox /srv/outbox /srv/documents
 
 USER app
 EXPOSE 8000

@@ -155,3 +155,14 @@ def test_field_cipher_round_trip_rotation_and_blind_index():
         FieldCipher([k2], idx).decrypt(token)
     assert old.blind_index("2345 6789") == old.blind_index("23456789")
     assert old.blind_index("23456789") != FieldCipher([k1], "j" * 32).blind_index("23456789")
+
+
+def test_file_encryption_round_trip_and_rotation():
+    idx = "x" * 40
+    k1, k2 = FieldCipher.new_key(), FieldCipher.new_key()
+    data = b"%PDF-1.7 scanned national ID" * 100
+    token = FieldCipher([k1], idx).encrypt_bytes(data)
+    assert data not in token
+    assert FieldCipher([k2, k1], idx).decrypt_bytes(token) == data       # old key still reads after rotation
+    with pytest.raises(ValueError):
+        FieldCipher([k2], idx).decrypt_bytes(token)

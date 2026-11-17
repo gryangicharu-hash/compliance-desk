@@ -51,6 +51,7 @@ class Hit(models.Model):
         TO_REVIEW = "to_review", "To review"
         FALSE_POSITIVE = "false_positive", "False positive"
         CONFIRMED = "confirmed", "Confirmed"
+        LIFTED = "lifted", "Confirmed, later lifted (two-person release)"
 
     member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="hits")
     kind = models.CharField(max_length=20, choices=ListKind.choices)

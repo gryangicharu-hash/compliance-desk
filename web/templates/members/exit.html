@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block title %}Exit {{ m.name }} · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><div><span class="mono muted">{{ m.member_no }}</span><h1>Record exit: {{ m.name }}</h1></div><a href="{% url 'members:detail' m.member_no %}">Cancel</a></div>
+<section class="card narrow">
+  <p class="muted small">The member's records are kept for 7 years from the exit date (reg. 37) and then deleted. Members on hold or with frozen funds can't be exited.</p>
+  <form method="post" class="f" style="grid-template-columns:1fr">{% csrf_token %}
+    {% if form.non_field_errors %}<div>{{ form.non_field_errors }}</div>{% endif %}
+    {{ form.as_p }}<p><button class="btn primary" type="submit">Record exit</button></p></form>
+</section>
+{% endblock %}

@@ -7,6 +7,7 @@
 #   BACKUP_DIR                        where backups go (put it on separate storage)
 #   BACKUP_GPG_RECIPIENT              optional: encrypt each backup to this GPG key
 #   KEEP_DAYS                         default 35
+#   DOCUMENT_DIR                      optional: KYC document folder to archive alongside
 set -euo pipefail
 : "${BACKUP_DIR:?set BACKUP_DIR}"
 db="${PGDATABASE:-compliance_desk}"
@@ -24,5 +25,12 @@ if [ -n "${BACKUP_GPG_RECIPIENT:-}" ]; then
   file="$file.gpg"
 fi
 ( cd "$BACKUP_DIR" && sha256sum "$(basename "$file")" > "$(basename "$file").sha256" )
+if [ -n "${DOCUMENT_DIR:-}" ] && [ -d "$DOCUMENT_DIR" ]; then
+  # The files are already encrypted with the field key; the archive only bundles them.
+  docs="$BACKUP_DIR/compliance-desk-$stamp.documents.tar"
+  tar -C "$DOCUMENT_DIR" -cf "$docs" .
+  ( cd "$BACKUP_DIR" && sha256sum "$(basename "$docs")" > "$(basename "$docs").sha256" )
+  echo "$docs"
+fi
 find "$BACKUP_DIR" -name 'compliance-desk-*' -type f -mtime +"$keep" -delete
 echo "$file"

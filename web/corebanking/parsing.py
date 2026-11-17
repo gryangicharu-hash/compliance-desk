@@ -57,6 +57,12 @@ LAYOUTS: dict[str, dict[str, tuple[bool, str]]] = {
         "counterparty": (False, "Paying or receiving phone number or account"),
         "purpose": (False, "e.g. deposit, loan_repayment, withdrawal, loan_disbursement"),
     },
+    "restricted_accounts": {
+        "member_no": (True, "Every member whose accounts core banking currently restricts on compliance instruction. "
+                            "Send the full list each time; a file with only the header row means none."),
+        "restriction": (False, "Core banking's own code or description"),
+        "as_at": (False, "Date and time the list was taken (default: when imported)"),
+    },
 }
 
 DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y")      # day before month, as used in Kenya
@@ -146,7 +152,8 @@ def parse_bool(value: str) -> bool:
     raise ValueError(f"'{value.strip()}' should be yes or no")
 
 
-def read_csv(data: bytes, kind: str, mapping: dict[str, str] | None = None) -> tuple[list[tuple[int, dict]], list[str]]:
+def read_csv(data: bytes, kind: str, mapping: dict[str, str] | None = None,
+             allow_empty: bool = False) -> tuple[list[tuple[int, dict]], list[str]]:
     """Rows as (line number, {our column: value}) and the columns found."""
     try:
         text = data.decode("utf-8-sig")
@@ -171,7 +178,7 @@ def read_csv(data: bytes, kind: str, mapping: dict[str, str] | None = None) -> t
         if not any(v.strip() for v in values):
             continue
         rows.append((line, {c: (values[i].strip() if i < len(values) else "") for i, c in enumerate(cols) if c in layout}))
-    if not rows:
+    if not rows and not allow_empty:
         raise FileError("The file has a header row but no data")
     return rows, cols
 
@@ -290,7 +297,26 @@ def transactions(data: bytes, mapping=None) -> Parsed:
     return out
 
 
-PARSERS = {"members": members, "loans": loans, "transactions": transactions}
+def restricted_accounts(data: bytes, mapping=None) -> Parsed:
+    out = Parsed()
+    raw, _ = read_csv(data, "restricted_accounts", mapping, allow_empty=True)
+    seen = {}
+    for line, r in raw:
+        try:
+            if not r.get("member_no"):
+                raise ValueError("member_no is required")
+            as_at = parse_datetime(r["as_at"]) if r.get("as_at") else None
+        except ValueError as exc:
+            out.error(line, str(exc))
+            continue
+        if r["member_no"] in seen:
+            continue                      # several restricted accounts for one member: one entry is enough
+        seen[r["member_no"]] = line
+        out.rows.append({"member_no": r["member_no"], "detail": r.get("restriction", ""), "as_at": as_at, "_line": line})
+    return out
+
+
+PARSERS = {"members": members, "loans": loans, "transactions": transactions, "restricted_accounts": restricted_accounts}
 
 
 def parse_mapping(text: str, kind: str) -> dict[str, str]:

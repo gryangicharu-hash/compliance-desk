@@ -91,7 +91,28 @@ def member_detail(request, member_no):
     from corebanking.models import Guarantee
     from monitoring.models import Alert
     from screening.models import Hit
+    from datetime import date as _date
+
+    from .file_views import CAN_EDIT
+    from .forms import DocumentForm, ReleaseRequestForm
+    from .models import StatusRelease
+    is_co = request.user.has_role(Role.COMPLIANCE_OFFICER)
+    restriction, core_status = _restriction(member)
+    retain_until = None
+    if member.exited_on:
+        try:
+            retain_until = member.exited_on.replace(year=member.exited_on.year + 7)
+        except ValueError:                      # 29 February
+            retain_until = _date(member.exited_on.year + 7, 3, 1)
     return render(request, "members/detail.html", {
+        "documents": member.documents.select_related("uploaded_by"), "document_form": DocumentForm(),
+        "can_edit": request.user.has_role(*CAN_EDIT), "retain_until": retain_until,
+        "changes": services.change_history(member) if request.user.has_role(*CAN_EDIT, *CASE_ROLES) else [],
+        "releases": member.releases.select_related("requested_by", "decided_by") if sees_cases else [],
+        "can_request_release": is_co and member.status == Status.BLOCKED
+                               and not member.releases.filter(state=StatusRelease.State.PENDING).exists(),
+        "can_decide_release": request.user.has_role(Role.COMPLIANCE_OFFICER, Role.SENIOR_MANAGEMENT),
+        "release_form": ReleaseRequestForm(), "restriction": restriction, "core_status": core_status,
         "loans": member.loans.prefetch_related("guarantees__guarantor"),
         "guarantees_given": Guarantee.objects.filter(guarantor=member).select_related("loan__borrower"),
         "network_flags": member.network_flags.all() if sees_cases else [],
@@ -157,3 +178,11 @@ def review(request, member_no):
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
     return redirect("members:detail", member_no=member_no)
+
+
+def _restriction(member):
+    try:
+        from restrictions.services import member_restriction
+    except ImportError:
+        return None, ""
+    return member_restriction(member)

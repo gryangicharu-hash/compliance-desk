@@ -10,12 +10,13 @@ from .models import JobRun
 from .services import JOBS, run_job
 
 CAN_VIEW = (Role.COMPLIANCE_OFFICER, Role.SENIOR_MANAGEMENT, Role.AUDITOR, Role.ADMINISTRATOR)
-RUN_NOW = ("fetch_un_list", "refresh_guarantors", "run_monitoring")
+RUN_NOW = ("fetch_un_list", "refresh_guarantors", "run_monitoring", "sync_restrictions")
 SCHEDULE = [
     ("fetch_un_list", "Every day, early morning", "Downloads the UN Security Council consolidated list; if it changed, loads it and re-screens every member."),
     ("import_inbox", "Every night", "Imports member, loan and transaction files the core banking system left in the import folder."),
     ("refresh_guarantors", "Every night", "Recalculates guarantor network flags and re-assesses members whose flags changed."),
     ("run_monitoring", "Every night", "Runs the monitoring rules over recent transactions and raises alerts."),
+    ("sync_restrictions", "Every 15 minutes and every night", "Sends hold, freeze and release instructions to core banking (web link) and writes the restrictions file to the outbox."),
     ("send_reminders", "Every night", "Emails compliance officers a count of what is due (no names or case details)."),
 ]
 

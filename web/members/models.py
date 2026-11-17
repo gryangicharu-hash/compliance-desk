@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 
@@ -140,3 +140,85 @@ class RiskAssessment(models.Model):
 
     class Meta:
         ordering = ["-assessed_at", "-id"]
+
+
+class MemberChange(models.Model):
+    """One edit of a member's details. Previous values are kept encrypted (they include
+    personal data) so the file's history can be shown to compliance and auditors."""
+    member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="changes")
+    changed_at = models.DateTimeField(auto_now_add=True)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    fields = models.JSONField(default=list)
+    previous_enc = models.TextField()
+    reason = models.TextField()
+
+    class Meta:
+        ordering = ["-changed_at", "-id"]
+
+
+class DocType(models.TextChoices):
+    NATIONAL_ID = "national_id", "National ID"
+    PASSPORT = "passport", "Passport"
+    KRA_PIN = "kra_pin", "KRA PIN certificate"
+    PAYSLIP = "payslip", "Payslip"
+    BANK_STATEMENT = "bank_statement", "Bank or M-Pesa statement"
+    PROOF_OF_ADDRESS = "proof_of_address", "Proof of address"
+    REGISTRATION = "registration", "Registration certificate"
+    RESOLUTION = "resolution", "Resolution or minutes"
+    OFFICIALS_IDS = "officials_ids", "Officials' or owners' IDs"
+    SOURCE_OF_WEALTH = "source_of_wealth", "Source of wealth evidence"
+    OTHER = "other", "Other"
+
+
+class MemberDocument(models.Model):
+    """A KYC document. The file is encrypted on disk; the sha256 of the original is
+    kept so any later copy can be shown to be the same file. Documents are never
+    deleted while the record must be kept; a replaced one is marked superseded."""
+    member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="documents")
+    doc_type = models.CharField(max_length=30, choices=DocType.choices)
+    description = models.CharField(max_length=200, blank=True)
+    filename = models.CharField(max_length=200)
+    content_type = models.CharField(max_length=60)
+    size = models.PositiveIntegerField()
+    sha256 = models.CharField(max_length=64)
+    stored_name = models.CharField(max_length=80, unique=True)
+    expires_on = models.DateField(null=True, blank=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    superseded_at = models.DateTimeField(null=True, blank=True)
+    superseded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    superseded_reason = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["superseded_at", "-uploaded_at", "-id"]
+        constraints = [models.CheckConstraint(
+            condition=Q(superseded_at__isnull=True) | ~Q(superseded_reason=""), name="superseded_document_has_reason")]
+
+
+class StatusRelease(models.Model):
+    """Lifting a sanctions freeze: one compliance officer asks, a different person
+    (compliance officer or senior management) decides."""
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Waiting for a second person"
+        APPROVED = "approved", "Approved: freeze lifted"
+        REJECTED = "rejected", "Rejected"
+
+    member = models.ForeignKey(Member, on_delete=models.PROTECT, related_name="releases")
+    reason = models.TextField()
+    evidence = models.TextField()
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    requested_at = models.DateTimeField(auto_now_add=True)
+    state = models.CharField(max_length=10, choices=State.choices, default=State.PENDING)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-requested_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["member"], condition=Q(state="pending"), name="one_pending_release_per_member"),
+            models.CheckConstraint(condition=~Q(decided_by=F("requested_by")), name="release_needs_two_people"),
+            models.CheckConstraint(condition=Q(state="pending") | (Q(decided_by__isnull=False) & ~Q(decision_note="")),
+                                   name="release_decision_recorded"),
+        ]

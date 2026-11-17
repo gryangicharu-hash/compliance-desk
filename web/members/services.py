@@ -13,7 +13,9 @@ from audittrail.services import record
 from compliance_core import models as core
 from compliance_core.risk import RiskInputs, RiskSettings, assess
 
-from .models import Member, MemberPerson, MemberType, Pep, RiskAssessment, Status
+from accounts.models import Role
+
+from .models import Member, MemberChange, MemberPerson, MemberType, Pep, RiskAssessment, Status, StatusRelease
 
 MEMBER_NO_LOCK = 7340002
 
@@ -175,3 +177,157 @@ def record_review(member: Member, *, user, note: str) -> RiskAssessment:
     member.save(update_fields=["last_review_on", "updated_at"])
     record(user.username, "member.reviewed", member.member_no, {"note": note.strip()})
     return reassess(member, user.username)
+
+
+# ---------------------------------------------------------------- editing a member's details
+
+EDITABLE = ("member_type", "name", "id_expiry", "date_of_birth", "nationality", "residence", "occupation", "employer",
+            "checkoff", "declared_monthly_income", "source_of_funds", "source_of_wealth", "channel", "products", "pep",
+            "expected_cash", "kyc_complete")
+SCREENED = {"name", "date_of_birth", "nationality", "member_type", "id_number", "persons"}
+
+
+def _plain(v):
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    if isinstance(v, (list, tuple, set)):
+        return list(v)
+    return str(v) if v is not None and not isinstance(v, (bool, int, str)) else v
+
+
+def _persons_key(people) -> list:
+    return sorted([p.kind, p.name.strip(), (p.role or "").strip(),
+                   None if p.ownership_pct is None else str(Decimal(p.ownership_pct).quantize(Decimal("0.01")))]
+                  for p in people)
+
+
+@transaction.atomic
+def update_member(member: Member, *, data: dict, persons: list[PersonInput], user, reason: str) -> list[str]:
+    """Apply an edit. Returns the fields that changed (empty if nothing did)."""
+    import json
+    from screening.services import screen, settle_status
+    member = Member.objects.select_for_update().get(pk=member.pk)
+    if member.status == Status.EXITED:
+        raise ValidationError("An exited member's file can't be edited.")
+    if not reason.strip():
+        raise ValidationError({"reason": "Say why the details are being changed (e.g. periodic review, member request)."})
+    previous: dict = {}
+    for f in EDITABLE:
+        if f in data and getattr(member, f) != data[f]:
+            previous[f] = _plain(getattr(member, f))
+            setattr(member, f, data[f])
+    new_id = (data.get("id_number") or "").strip()
+    if new_id and cipher().blind_index(new_id) != member.id_number_bidx:
+        other = find_by_id_number(new_id)
+        if other and other.pk != member.pk:
+            raise ValidationError({"id_number": "Another member already has this ID or registration number."})
+        previous["id_number"] = cipher().decrypt(member.id_number_enc)
+        member.id_number_enc, member.id_number_bidx = cipher().encrypt(new_id), cipher().blind_index(new_id)
+    old_people = list(member.persons.all())
+    if _persons_key(old_people) != _persons_key(persons):
+        previous["persons"] = [[p.kind, p.name, p.role, _plain(p.ownership_pct)] for p in old_people]
+        member.persons.all().delete()
+        for p in persons:
+            MemberPerson.objects.create(member=member, kind=p.kind, name=p.name, role=p.role, ownership_pct=p.ownership_pct)
+    if not previous:
+        return []
+    if member.member_type != MemberType.INDIVIDUAL and not member.persons.filter(kind=MemberPerson.Kind.OFFICIAL).exists():
+        raise ValidationError({"officials": "Groups and companies need at least one official or signatory."})
+    became_pep = "pep" in previous and previous["pep"] == Pep.NONE and member.pep != Pep.NONE
+    if became_pep or "pep" in previous:
+        member.pep_approved_by, member.pep_approved_at = None, None
+    if became_pep and member.status == Status.ACTIVE:
+        member.status = Status.PENDING_APPROVAL          # continuing a PEP relationship needs approval (reg. 22)
+    member.save()
+    changed = sorted(previous)
+    MemberChange.objects.create(member=member, changed_by=user, fields=changed, reason=reason.strip(),
+                                previous_enc=cipher().encrypt(json.dumps(previous, default=str)))
+    record(user.username, "member.updated", member.member_no, {"fields": changed, "reason": reason.strip()})
+    if SCREENED & set(changed):
+        screen(member, user.username)
+    reassess(member, user.username)
+    settle_status(member, user.username)
+    return changed
+
+
+def change_history(member: Member) -> list[dict]:
+    import json
+    out = []
+    for c in member.changes.select_related("changed_by"):
+        try:
+            prev = json.loads(cipher().decrypt(c.previous_enc))
+        except ValueError:
+            prev = {}
+        out.append({"c": c, "previous": prev})
+    return out
+
+
+# ---------------------------------------------------------------- exits
+
+@transaction.atomic
+def exit_member(member: Member, *, user, exited_on, reason: str) -> Member:
+    from cases.models import Case
+    member = Member.objects.select_for_update().get(pk=member.pk)
+    if not reason.strip():
+        raise ValidationError("Record why the member is leaving.")
+    if member.status == Status.EXITED:
+        raise ValidationError("This member has already exited.")
+    if exited_on > timezone.localdate():
+        raise ValidationError("The exit date can't be in the future.")
+    refer = "This member can't be exited here. Refer the request to the compliance officer."
+    if member.status in (Status.BLOCKED, Status.SCREENING_HOLD):
+        # Frozen or held funds must stay where they are until compliance resolves it.
+        raise ValidationError(refer if not user.has_role(Role.COMPLIANCE_OFFICER) else
+                              "Members on hold or with frozen funds can't be exited: resolve the screening first.")
+    with db_role("system"):
+        open_case = Case.objects.filter(member=member, status=Case.Status.OPEN).exists()
+    if open_case and not user.has_role(Role.COMPLIANCE_OFFICER):
+        raise ValidationError(refer)      # same wording as above: never hint at a case (tipping-off)
+    old = member.status
+    member.status, member.exited_on = Status.EXITED, exited_on
+    member.save()
+    record(user.username, "member.exited", member.member_no,
+           {"from": old, "on": exited_on, "reason": reason.strip(), "open_case": open_case})
+    return member
+
+
+# ---------------------------------------------------------------- lifting a sanctions freeze (two people)
+
+@transaction.atomic
+def request_release(member: Member, *, user, reason: str, evidence: str) -> "StatusRelease":
+    if member.status != Status.BLOCKED:
+        raise ValidationError("Only a blocked member's freeze can be lifted.")
+    if not reason.strip() or not evidence.strip():
+        raise ValidationError("Give the reason and the evidence (e.g. UN delisting notice, FRC instruction).")
+    if member.releases.filter(state=StatusRelease.State.PENDING).exists():
+        raise ValidationError("A request is already waiting for a decision.")
+    r = StatusRelease.objects.create(member=member, reason=reason.strip(), evidence=evidence.strip(), requested_by=user)
+    record(user.username, "member.release_requested", member.member_no, {"request": r.pk})
+    return r
+
+
+@transaction.atomic
+def decide_release(release: "StatusRelease", *, user, approve: bool, note: str) -> "StatusRelease":
+    from screening.models import Hit
+    release = StatusRelease.objects.select_for_update().select_related("member").get(pk=release.pk)
+    if release.state != StatusRelease.State.PENDING:
+        raise ValidationError("This request has already been decided.")
+    if release.requested_by_id == user.pk:
+        raise ValidationError("A second person must decide: you made this request.")
+    if not note.strip():
+        raise ValidationError("Record the reason for the decision.")
+    release.state = StatusRelease.State.APPROVED if approve else StatusRelease.State.REJECTED
+    release.decided_by, release.decided_at, release.decision_note = user, timezone.now(), note.strip()
+    release.save()
+    member = release.member
+    record(user.username, f"member.release_{release.state}", member.member_no, {"request": release.pk})
+    if approve:
+        lifted = Hit.objects.filter(member=member, kind="sanctions", status=Hit.Status.CONFIRMED)
+        refs = list(lifted.values_list("entry_ref", flat=True))
+        lifted.update(status=Hit.Status.LIFTED)
+        ra = reassess(member, user.username)
+        member.refresh_from_db()
+        member.status = Status.PENDING_APPROVAL if needs_approval(member) or ra.rating == "high" else Status.ACTIVE
+        member.save(update_fields=["status", "updated_at"])
+        record(user.username, "member.freeze_lifted", member.member_no, {"entries": refs, "status": member.status})
+    return release

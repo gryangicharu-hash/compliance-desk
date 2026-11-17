@@ -41,6 +41,16 @@ class FieldCipher:
         except InvalidToken as exc:
             raise ValueError("Value cannot be decrypted with the configured keys") from exc
 
+    def encrypt_bytes(self, data: bytes) -> bytes:
+        """For files (KYC documents). Same keys and rotation as field values."""
+        return self._f.encrypt(data)
+
+    def decrypt_bytes(self, token: bytes) -> bytes:
+        try:
+            return self._f.decrypt(token)
+        except InvalidToken as exc:
+            raise ValueError("File cannot be decrypted with the configured keys") from exc
+
     def rotate(self, token: str) -> str:
         return self._f.rotate(token.encode()).decode()
 

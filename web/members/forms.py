@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import PRODUCTS, Channel, Level, MemberType, Pep
+from .models import PRODUCTS, Channel, DocType, Level, MemberType, Pep
 
 COUNTRIES = ["Kenya", "Uganda", "Tanzania", "Rwanda", "Burundi", "South Sudan", "Ethiopia", "Somalia",
              "United Kingdom", "United States", "United Arab Emirates", "Germany", "South Africa", "Other"]
@@ -38,3 +38,37 @@ class OnboardForm(forms.Form):
             if not (data.get("officials") or "").strip():
                 self.add_error("officials", "Groups and companies need at least one official or signatory.")
         return data
+
+
+class EditForm(OnboardForm):
+    """The onboarding fields, plus the reason. Leave the ID number empty to keep it."""
+    reason = forms.CharField(max_length=500, widget=forms.Textarea(attrs={"rows": 2}), label="Reason for the change",
+                             help_text="e.g. periodic review, member's request with documents, correction")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["id_number"].required = False
+        self.fields["id_number"].help_text = "Leave empty to keep the number on file (it is never shown in full)."
+        self.fields["channel"].label = "Onboarding channel"
+
+
+class ExitForm(forms.Form):
+    exited_on = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), label="Date of exit")
+    reason = forms.CharField(max_length=500, widget=forms.Textarea(attrs={"rows": 2}), label="Reason")
+
+
+class DocumentForm(forms.Form):
+    doc_type = forms.ChoiceField(choices=DocType.choices, label="Document")
+    description = forms.CharField(max_length=200, required=False)
+    expires_on = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}), label="Expires")
+    file = forms.FileField(help_text="PDF, JPEG or PNG, up to 10 MB")
+
+
+class ReleaseRequestForm(forms.Form):
+    reason = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), label="Why the freeze should be lifted")
+    evidence = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}),
+                               help_text="e.g. UN Security Council press release of delisting with date and reference, FRC instruction")
+
+
+class DecisionNoteForm(forms.Form):
+    note = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), label="Reason for your decision")

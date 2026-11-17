@@ -106,7 +106,7 @@ def import_inbox() -> dict:
         return {"nothing_to_do": True, "result": "No import folder set up"}
     stamp = timezone.localdate().isoformat()
     results = []
-    for kind in ("members", "loans", "transactions"):          # members first, so loans and transactions find them
+    for kind in ("members", "loans", "transactions", "restricted_accounts"):   # members first, so the others find them
         folder = inbox / kind
         if not folder.is_dir():
             continue
@@ -155,14 +155,20 @@ def send_reminders() -> dict:
     return {"items": len(items), "sent_to": len(to)}
 
 
+def sync_restrictions() -> dict:
+    from restrictions.services import run_job as run
+    return run(SYSTEM_USERNAME)
+
+
 JOBS = {
     "fetch_un_list": fetch_un_list,
     "import_inbox": import_inbox,
     "refresh_guarantors": refresh_guarantors,
     "run_monitoring": run_monitoring,
+    "sync_restrictions": sync_restrictions,
     "send_reminders": send_reminders,
 }
-NIGHTLY = ("import_inbox", "refresh_guarantors", "run_monitoring", "send_reminders")
+NIGHTLY = ("import_inbox", "refresh_guarantors", "run_monitoring", "sync_restrictions", "send_reminders")
 
 
 # ---------------------------------------------------------------- what is due
@@ -224,6 +230,10 @@ def due_items(today=None) -> list[dict]:
         add("due", f"{_plural(expired, 'member')} with an expired ID document", reverse("members:list") + "?id=expired")
     if expiring:
         add("info", f"{_plural(expiring, 'member')} with an ID expiring in the next 60 days", reverse("members:list") + "?id=expiring")
+
+    from restrictions.services import due as restriction_due
+    for level, text in restriction_due():
+        add(level, text, reverse("restrictions:overview"))
 
     checked = JobRun.objects.filter(job="fetch_un_list", status__in=[JobRun.Status.SUCCEEDED, JobRun.Status.NOTHING_TO_DO]
                                     ).values_list("finished_at", flat=True).first()

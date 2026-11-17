@@ -12,6 +12,7 @@ class ImportKind(models.TextChoices):
     MEMBERS = "members", "Members"
     LOANS = "loans", "Loans and guarantors"
     TRANSACTIONS = "transactions", "Transactions"
+    RESTRICTED = "restricted_accounts", "Restricted accounts (confirmation from core banking)"
 
 
 class ImportProfile(models.Model):

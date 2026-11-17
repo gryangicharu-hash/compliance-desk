@@ -50,7 +50,7 @@ def import_file(*, data: bytes, filename: str, kind: str, user, profile: ImportP
     sha = hashlib.sha256(data).hexdigest()
     pname = profile.name if profile else ""
     earlier = ImportBatch.objects.filter(sha256=sha, kind=kind, status=ImportBatch.Status.IMPORTED).first()
-    if earlier:
+    if earlier and kind != ImportKind.RESTRICTED:      # the same restricted list can rightly arrive two days running
         return _reject(kind=kind, filename=filename, sha=sha, profile=pname, user=user,
                        errors=[f"This exact file was already imported on {timezone.localtime(earlier.imported_at):%d %b %Y %H:%M}."])
     try:
@@ -103,6 +103,9 @@ def _check_against_database(kind: str, rows: list[dict]) -> list[str]:
                     errors.append(f"Row {r['_line']}: member {no} is not on record; import members first")
             if r["loan_no"] in existing and existing[r["loan_no"]] != r["borrower_no"]:
                 errors.append(f"Row {r['_line']}: loan {r['loan_no']} is recorded for member {existing[r['loan_no']]}")
+    elif kind == ImportKind.RESTRICTED:
+        known = set(Member.objects.filter(member_no__in={r["member_no"] for r in rows}).values_list("member_no", flat=True))
+        errors += [f"Row {r['_line']}: member {r['member_no']} is not on record" for r in rows if r["member_no"] not in known]
     elif kind == ImportKind.TRANSACTIONS:
         known = set(Member.objects.filter(member_no__in={r["member_no"] for r in rows}).values_list("member_no", flat=True))
         existing = {t.txn_id: t for t in Transaction.objects.filter(txn_id__in=[r["txn_id"] for r in rows])
@@ -201,7 +204,15 @@ def _apply_transactions(rows, batch, user):
     return {"created": len(new), "updated": 0, "unchanged": len(rows) - len(new)}, affected
 
 
-APPLY = {ImportKind.MEMBERS: _apply_members, ImportKind.LOANS: _apply_loans, ImportKind.TRANSACTIONS: _apply_transactions}
+def _apply_restricted(rows, batch, user):
+    from restrictions.services import record_report
+    members = dict(Member.objects.filter(member_no__in={r["member_no"] for r in rows}).values_list("member_no", "pk"))
+    record_report(rows, batch, members)
+    return {"created": len(rows), "updated": 0, "unchanged": 0}, []
+
+
+APPLY = {ImportKind.RESTRICTED: _apply_restricted,
+         ImportKind.MEMBERS: _apply_members, ImportKind.LOANS: _apply_loans, ImportKind.TRANSACTIONS: _apply_transactions}
 
 
 def _after_import(kind: str, affected, actor: str) -> None:

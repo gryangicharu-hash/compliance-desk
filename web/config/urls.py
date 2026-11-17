@@ -25,6 +25,7 @@ urlpatterns = [
     path("data/", include("corebanking.urls")),
     path("jobs/", include("jobs.urls")),
     path("audit/", include("assurance.urls")),
+    path("restrictions/", include("restrictions.urls")),
 ]
 
 handler403 = "accounts.views.forbidden"

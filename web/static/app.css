@@ -49,3 +49,4 @@ dl.kv{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:6px 12px;marg
 .track{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}.fill{height:100%;background:var(--accent)}
 .narrow{max-width:420px;margin:40px auto}
 ul.due{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.msg.info{background:var(--info-soft);color:var(--info)}

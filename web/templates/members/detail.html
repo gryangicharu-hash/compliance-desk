@@ -8,11 +8,15 @@
   <div class="row" style="justify-content:flex-end">
   {% if can_decide %}<form method="post" action="{% url 'screening:rescreen' m.member_no %}">{% csrf_token %}<button class="btn" type="submit">Re-screen</button></form>
     {% if m.status != 'blocked' %}<a class="btn" href="{% url 'cases:open' m.member_no %}">Open a case</a>{% endif %}{% endif %}
+  {% if can_edit and m.status != 'exited' %}<a class="btn" href="{% url 'members:edit' m.member_no %}">Edit details</a>
+    <a class="btn" href="{% url 'members:exit' m.member_no %}">Record exit</a>{% endif %}
   {% if can_approve %}<form method="post" action="{% url 'members:approve' m.member_no %}">{% csrf_token %}<button class="btn primary" type="submit">Approve relationship</button></form>{% endif %}
   </div>
 </div>
 {% if m.status == 'screening_hold' %}<div class="msg warning">On hold: a possible sanctions match is waiting for the compliance officer's decision. Don't process transactions{% if not sees_cases %} and don't discuss the reason with the member{% endif %}.</div>{% endif %}
 {% if m.status == 'blocked' %}<div class="msg error">Blocked. No transactions may be processed. Refer any contact from this member to the compliance officer.</div>{% endif %}
+{% if m.status == 'exited' %}<div class="msg info">Exited on {{ m.exited_on|date:"d M Y" }}. Records are kept until {{ retain_until|date:"d M Y" }} (7 years, reg. 37).</div>{% endif %}
+{% if restriction and restriction.level != 'none' %}<div class="small muted" style="margin:-4px 0 10px">Core banking: <b>{{ restriction.get_level_display }}</b> since {{ restriction.since|date:"d M Y H:i" }}{% if core_status %} · {{ core_status }}{% endif %}</div>{% endif %}
 {% if m.status == 'pending_approval' and not can_approve %}<div class="msg warning">Waiting for senior management approval.{% if m.pep != 'none' %} PEPs need approval and a recorded source of wealth (reg. 22).{% endif %}</div>{% endif %}
 <div class="grid">
   <section class="card"><h2>Profile</h2><dl class="kv">
@@ -62,6 +66,32 @@
   <p class="small muted"><a href="{% url 'corebanking:guarantors' %}">Guarantor network</a></p></section>{% endif %}
 </div>{% endif %}
 {% if alerts %}<section class="card"><h2>Monitoring alerts</h2><ul class="small">{% for a in alerts %}<li><a href="{% url 'monitoring:alert' a.pk %}">{{ a.get_rule_display }}</a> · {{ a.raised_at|date:"d M Y" }} · {{ a.get_status_display }}</li>{% endfor %}</ul></section>{% endif %}
+<section class="card"><div class="row"><h2>KYC documents</h2></div>
+  {% if documents %}<div class="tablewrap"><table><thead><tr><th>Document</th><th>Added</th><th></th></tr></thead><tbody>
+  {% for d in documents %}<tr{% if d.superseded_at %} class="muted"{% endif %}><td><a href="{% url 'members:document' m.member_no d.pk %}" target="_blank" rel="noopener">{{ d.get_doc_type_display }}</a>{% if d.description %} · {{ d.description }}{% endif %}
+    <br><span class="small muted">{{ d.filename }} · {{ d.size|filesizeformat }}{% if d.expires_on %} · expires {{ d.expires_on|date:"d M Y" }}{% endif %}{% if d.superseded_at %} · replaced {{ d.superseded_at|date:"d M Y" }}: {{ d.superseded_reason }}{% endif %}</span></td>
+    <td class="small">{{ d.uploaded_at|date:"d M Y" }}<br>{{ d.uploaded_by }}</td>
+    <td>{% if can_edit and not d.superseded_at and m.status != 'exited' %}<details><summary class="small">Replace</summary><form method="post" action="{% url 'members:supersede_document' m.member_no d.pk %}" class="row">{% csrf_token %}<input name="reason" placeholder="Why (e.g. new ID issued)" required><button class="btn" type="submit">Mark replaced</button></form></details>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="muted small">No documents stored.</p>{% endif %}
+  {% if can_edit and m.status != 'exited' %}<form method="post" enctype="multipart/form-data" action="{% url 'members:upload_document' m.member_no %}" class="f" style="margin-top:10px">{% csrf_token %}{{ document_form.as_p }}<p class="full"><button class="btn" type="submit">Store document</button></p></form>{% endif %}
+  <p class="small muted">Files are encrypted when stored; every view is recorded in the audit trail.</p>
+</section>
+{% if releases or can_request_release %}<section class="card"><h2>Lifting the freeze</h2>
+  <p class="small muted">Only when the person is removed from the list or the match is shown to be wrong. One compliance officer asks; a different compliance officer or senior manager decides.</p>
+  {% for r in releases %}<div class="card" style="margin-top:8px"><p class="small"><b>{{ r.get_state_display }}</b> · asked by {{ r.requested_by }} on {{ r.requested_at|date:"d M Y H:i" }}</p>
+    <p class="small"><b>Reason.</b> {{ r.reason }}</p><p class="small"><b>Evidence.</b> {{ r.evidence }}</p>
+    {% if r.decided_by %}<p class="small"><b>Decision</b> by {{ r.decided_by }}, {{ r.decided_at|date:"d M Y H:i" }}: {{ r.decision_note }}</p>{% endif %}
+    {% if r.state == 'pending' and can_decide_release and r.requested_by_id != user.pk %}
+      <form method="post" class="f" action="{% url 'members:decide_release' m.member_no r.pk 'approve' %}">{% csrf_token %}<p class="full"><label>Reason for your decision</label><textarea name="note" rows="2" required></textarea></p>
+      <p class="full row"><button class="btn primary" type="submit">Approve: lift the freeze</button>
+      <button class="btn" type="submit" formaction="{% url 'members:decide_release' m.member_no r.pk 'reject' %}">Reject</button></p></form>{% endif %}
+  </div>{% endfor %}
+  {% if can_request_release %}<form method="post" action="{% url 'members:request_release' m.member_no %}" class="f" style="margin-top:10px">{% csrf_token %}{{ release_form.as_p }}<p class="full"><button class="btn" type="submit">Ask for the freeze to be lifted</button></p></form>{% endif %}
+</section>{% endif %}
+{% if changes %}<section class="card"><h2>Changes to details</h2><ul class="small">
+  {% for ch in changes %}<li>{{ ch.c.changed_at|date:"d M Y H:i" }} · {{ ch.c.changed_by }} · {{ ch.c.fields|join:", " }} · <i>{{ ch.c.reason }}</i>
+  {% if sees_cases %}<details><summary>Previous values</summary><ul>{% for k, v in ch.previous.items %}<li><span class="mono">{{ k }}</span>: {% if k == 'id_number' %}{{ v|slice:":3" }}•••••{% else %}{{ v }}{% endif %}</li>{% endfor %}</ul></details>{% endif %}</li>{% endfor %}
+</ul></section>{% endif %}
 <section class="card"><h2>History</h2>
 <div class="tablewrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>
 {% for e in history %}<tr><td class="small">{{ e.at|date:"d M Y H:i" }}</td><td class="small">{{ e.actor }}</td><td>{{ e.action }}</td><td class="small mono">{{ e.detail }}</td></tr>{% empty %}<tr><td colspan="4" class="muted">No entries.</td></tr>{% endfor %}

@@ -13,6 +13,7 @@ services:
       - ./deploy/db-init.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
       - ./deploy/backup.sh:/usr/local/bin/compliance-backup:ro
       - ${BACKUP_DIR_HOST:-./backups}:/backups
+      - documents:/documents:ro          # so the nightly backup includes the (encrypted) KYC files
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
@@ -28,6 +29,8 @@ services:
       PGUSER: compliance_app
       PGDATABASE: compliance_desk
       IMPORT_INBOX: /srv/inbox
+      EXPORT_OUTBOX: /srv/outbox
+      DOCUMENT_ROOT: /srv/documents
       POSTGRES_PASSWORD: ""            # the app never gets the superuser password
     depends_on:
       db:
@@ -36,6 +39,9 @@ services:
       - "127.0.0.1:8000:8000"          # only the reverse proxy on this host reaches the app
     volumes:
       - ${IMPORT_INBOX_HOST:-./inbox}:/srv/inbox
+      - ${EXPORT_OUTBOX_HOST:-./outbox}:/srv/outbox
+      - documents:/srv/documents
 
 volumes:
   pgdata:
+  documents:

@@ -7,4 +7,4 @@ Type=oneshot
 WorkingDirectory=/srv/compliance-desk
 # Runs pg_dump inside the database container as the postgres superuser; files land in
 # BACKUP_DIR_HOST (default ./backups). Copy them off the server (see docs/DEPLOYMENT.md).
-ExecStart=/usr/bin/docker compose exec -T -e PGUSER=postgres -e BACKUP_DIR=/backups db bash /usr/local/bin/compliance-backup
+ExecStart=/usr/bin/docker compose exec -T -e PGUSER=postgres -e BACKUP_DIR=/backups -e DOCUMENT_DIR=/documents db bash /usr/local/bin/compliance-backup

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "monitoring",
     "jobs",
     "assurance",
+    "restrictions",
 ]
 
 MIDDLEWARE = [
@@ -161,10 +162,25 @@ LIST_UPLOAD_MAX_BYTES = 50 * 1024 * 1024
 RISK_SETTINGS_VERSION = env("RISK_SETTINGS_VERSION", "default-not-yet-approved")
 INSTITUTION_NAME = env("INSTITUTION_NAME", "Demo SACCO")
 
+# KYC documents: encrypted files kept outside the database. Back this folder up with
+# the database (deploy/backup.sh does both) and keep the encryption key separately.
+DOCUMENT_ROOT = env("DOCUMENT_ROOT", str(BASE_DIR / "documents"))
+DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
+
 # Core banking imports. IMPORT_INBOX is a folder the core banking system (or an SFTP
 # drop) writes CSV files to; the nightly job imports them. Leave empty to import by hand.
 IMPORT_MAX_BYTES = 100 * 1024 * 1024
 IMPORT_INBOX = env("IMPORT_INBOX", "")
+
+# Telling core banking about holds and freezes. Either or both:
+#  * a web link the core banking system (or its integration layer) exposes; each change
+#    is POSTed as JSON signed with HMAC-SHA256 in the X-Compliance-Desk-Signature header;
+#  * an outbox folder: the full list of restricted members is written there as CSV.
+CORE_BANKING_WEBHOOK_URL = env("CORE_BANKING_WEBHOOK_URL", "")
+CORE_BANKING_WEBHOOK_SECRET = env("CORE_BANKING_WEBHOOK_SECRET", "")
+EXPORT_OUTBOX = env("EXPORT_OUTBOX", "")
+if CORE_BANKING_WEBHOOK_URL and len(CORE_BANKING_WEBHOOK_SECRET) < 32:
+    raise ImproperlyConfigured("CORE_BANKING_WEBHOOK_SECRET must be at least 32 characters when a web link is set")
 
 # Transaction monitoring. KES per US dollar for the USD 15,000 large cash threshold
 # (reg. 35). The administrator should keep this in line with the CBK rate.
