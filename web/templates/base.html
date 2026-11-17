@@ -13,7 +13,10 @@
     <a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}on{% endif %}">Overview</a>
     <a href="{% url 'members:list' %}" class="{% if request.resolver_match.app_name == 'members' %}on{% endif %}">Members</a>
     {% if user.role in 'compliance_officer senior_management auditor' %}<a href="{% url 'screening:queue' %}" class="{% if request.resolver_match.app_name == 'screening' %}on{% endif %}">Screening</a>
-    <a href="{% url 'cases:list' %}" class="{% if request.resolver_match.app_name == 'cases' %}on{% endif %}">Cases</a>{% endif %}
+    <a href="{% url 'monitoring:alerts' %}" class="{% if request.resolver_match.app_name == 'monitoring' %}on{% endif %}">Monitoring</a>
+    <a href="{% url 'cases:list' %}" class="{% if request.resolver_match.app_name == 'cases' %}on{% endif %}">Cases</a>
+    <a href="{% url 'corebanking:guarantors' %}" class="{% if request.resolver_match.url_name == 'guarantors' %}on{% endif %}">Guarantors</a>{% endif %}
+    {% if user.role in 'compliance_officer administrator auditor' %}<a href="{% url 'corebanking:imports' %}" class="{% if request.resolver_match.app_name == 'corebanking' and request.resolver_match.url_name != 'guarantors' or request.resolver_match.app_name == 'jobs' %}on{% endif %}">Data and jobs</a>{% endif %}
     {% if user.role != 'front_office' %}<a href="{% url 'audittrail:list' %}" class="{% if request.resolver_match.app_name == 'audittrail' %}on{% endif %}">Audit trail</a>{% endif %}
   </nav>
   {% endif %}

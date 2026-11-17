@@ -9,6 +9,9 @@ urlpatterns = [
     path("audit-trail/", include("audittrail.urls")),
     path("screening/", include("screening.urls")),
     path("cases/", include("cases.urls")),
+    path("monitoring/", include("monitoring.urls")),
+    path("data/", include("corebanking.urls")),
+    path("jobs/", include("jobs.urls")),
 ]
 
 handler403 = "accounts.views.forbidden"

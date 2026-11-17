@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block title %}Guarantors · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Guarantor network</h1>{% if can_recalculate %}<form method="post" action="{% url 'corebanking:recalculate' %}">{% csrf_token %}<button class="btn" type="submit">Recalculate now</button></form>{% endif %}</div>
+<p class="muted">Every guarantor is a member, so guarantees link members together. Circular guarantees, one member guaranteeing many loans, and guarantees involving blocked, high-risk or unresolved-match members can hide nominee borrowing. Flags raise the member's risk rating. {{ loans }} active loan(s), {{ guarantees }} guarantee(s){% if computed_at %}; calculated {{ computed_at|date:"d M Y H:i" }}{% endif %}.</p>
+{% if cycles %}<section class="card"><h2>Circular guarantees ({{ cycles|length }})</h2><ul>{% for c in cycles %}<li class="mono">{{ c }}</li>{% endfor %}</ul></section>{% endif %}
+<section class="card"><h2>Members with flags</h2>
+<div class="tablewrap"><table><thead><tr><th>Member</th><th>Flags</th></tr></thead><tbody>
+{% for r in rows %}<tr><td><a href="{% url 'members:detail' r.m.member_no %}">{{ r.m.name }}</a><br><span class="mono muted">{{ r.m.member_no }}</span></td>
+<td>{% for f in r.flags %}<span class="pill {% if f.severity == 'high' %}r-high{% else %}r-medium{% endif %}">{{ f.code|title }}</span> <span class="small">{{ f.text }}</span><br>{% endfor %}</td></tr>
+{% empty %}<tr><td colspan="2" class="muted">No flags.</td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="card"><h2>Most active guarantors</h2>
+<div class="tablewrap"><table><thead><tr><th>Member</th><th>Active loans guaranteed</th></tr></thead><tbody>
+{% for m in top %}<tr><td><a href="{% url 'members:detail' m.member_no %}">{{ m.name }}</a> <span class="mono muted">{{ m.member_no }}</span></td><td class="mono">{{ m.n }}</td></tr>{% empty %}<tr><td colspan="2" class="muted">No guarantees imported yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

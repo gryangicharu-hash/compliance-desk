@@ -41,9 +41,11 @@ def needs_approval(member: Member) -> bool:
 def _inputs(member: Member) -> RiskInputs:
     from cases.models import Case
     from screening.services import screening_status
+    from corebanking.services import credits_last_30_days, flags_for
     with db_role("system"):          # the rating must reflect open cases whoever triggered it
         open_case = Case.objects.filter(member=member, status=Case.Status.OPEN).exists()
-    return RiskInputs(screening=screening_status(member), open_case=open_case, expected_cash=member.expected_cash)
+    return RiskInputs(screening=screening_status(member), open_case=open_case, expected_cash=member.expected_cash,
+                      guarantor_flags=flags_for(member), credits_last_30_days=credits_last_30_days(member))
 
 
 def reassess(member: Member, actor: str) -> RiskAssessment:
@@ -70,8 +72,10 @@ class PersonInput:
 def _next_member_no() -> str:
     with connection.cursor() as cur:
         cur.execute("SELECT pg_advisory_xact_lock(%s)", [MEMBER_NO_LOCK])
-    last = Member.objects.order_by("-id").values_list("member_no", flat=True).first()
-    n = int(last[1:]) + 1 if last and last[1:].isdigit() else 1
+    # Members imported from core banking keep their own numbers; only M###### are ours.
+    last = (Member.objects.filter(member_no__regex=r"^M[0-9]{6}$").order_by("-member_no")
+            .values_list("member_no", flat=True).first())
+    n = int(last[1:]) + 1 if last else 1
     return f"M{n:06d}"
 
 

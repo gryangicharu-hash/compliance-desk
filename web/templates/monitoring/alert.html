@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block title %}Alert · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><div><span class="mono muted">Alert {{ a.pk }} · raised {{ a.raised_at|date:"d M Y H:i" }}</span><h1>{{ a.get_rule_display }}</h1></div><a href="{% url 'monitoring:alerts' %}">Back to alerts</a></div>
+<section class="card"><dl class="kv">
+  <dt>Member</dt><dd><a href="{% url 'members:detail' a.member.member_no %}">{{ a.member.name }}</a> <span class="mono muted">{{ a.member.member_no }}</span></dd>
+  <dt>What was seen</dt><dd>{{ a.description }}</dd>
+  <dt>Declared income</dt><dd>KES {{ a.member.declared_monthly_income|floatformat:"0g" }} a month · {{ a.member.occupation|default:"occupation not recorded" }}</dd>
+  <dt>Status</dt><dd>{{ a.get_status_display }}{% if a.decided_by %} · {{ a.decided_by }}, {{ a.decided_at|date:"d M Y H:i" }}{% endif %}{% if a.case %} · <a class="mono" href="{% url 'cases:detail' a.case.ref %}">{{ a.case.ref }}</a>{% endif %}</dd>
+  {% if a.note %}<dt>Reason</dt><dd>{{ a.note }}</dd>{% endif %}
+</dl></section>
+<section class="card"><h2>Transactions</h2>
+<div class="tablewrap"><table><thead><tr><th>When</th><th>Reference</th><th>Direction</th><th>Channel</th><th>Amount (KES)</th><th>Counterparty</th></tr></thead><tbody>
+{% for t in txns %}<tr><td class="small">{{ t.at|date:"d M Y H:i" }}</td><td class="mono">{{ t.txn_id }}</td><td>{{ t.get_direction_display }}</td><td>{{ t.get_channel_display }}{% if t.purpose %}<br><span class="small muted">{{ t.purpose }}</span>{% endif %}</td><td class="mono">{{ t.amount|floatformat:"2g" }}</td><td class="small mono">{{ t.counterparty }}</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% if can_decide %}<section class="card"><h2>Decision</h2>
+<form method="post" action="{% url 'monitoring:decide' a.pk %}" class="f">{% csrf_token %}{{ form.as_p }}<p class="full"><button class="btn primary" type="submit">Record decision</button></p></form>
+<p class="small muted">Don't contact the member about this alert: that could tip them off.</p></section>{% endif %}
+{% endblock %}

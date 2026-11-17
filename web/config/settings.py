@@ -41,6 +41,9 @@ INSTALLED_APPS = [
     "members",
     "screening",
     "cases",
+    "corebanking",
+    "monitoring",
+    "jobs",
 ]
 
 MIDDLEWARE = [
@@ -142,6 +145,30 @@ LIST_UPLOAD_MAX_BYTES = 50 * 1024 * 1024
 
 RISK_SETTINGS_VERSION = env("RISK_SETTINGS_VERSION", "default-not-yet-approved")
 INSTITUTION_NAME = env("INSTITUTION_NAME", "Demo SACCO")
+
+# Core banking imports. IMPORT_INBOX is a folder the core banking system (or an SFTP
+# drop) writes CSV files to; the nightly job imports them. Leave empty to import by hand.
+IMPORT_MAX_BYTES = 100 * 1024 * 1024
+IMPORT_INBOX = env("IMPORT_INBOX", "")
+
+# Transaction monitoring. KES per US dollar for the USD 15,000 large cash threshold
+# (reg. 35). The administrator should keep this in line with the CBK rate.
+USD_KES_RATE = env("USD_KES_RATE", "129.00")
+
+# Daily sanctions list download. Check the address against the UN Security Council
+# website before go-live; it can be pointed at a local mirror.
+UN_LIST_URL = env("UN_LIST_URL", "https://scsanctions.un.org/resources/xml/en/consolidated.xml")
+UN_LIST_NAME = "UN Security Council consolidated list"
+
+# Reminder emails. The default prints emails to the log; set EMAIL_BACKEND to
+# django.core.mail.backends.smtp.EmailBackend and the EMAIL_* settings to send them.
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(env("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "compliance-desk@localhost")
 
 LOGGING = {
     "version": 1,

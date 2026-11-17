@@ -8,6 +8,9 @@
   <div class="tile"><div class="v">{{ by_rating.high }}</div><div class="l">High risk</div></div>
   <div class="tile"><div class="v">{{ by_rating.prohibited }}</div><div class="l">Prohibited</div></div>
 </div>
+{% if sees_due %}<section class="card"><h2>Needs attention</h2>
+  {% if due %}<ul class="due">{% for i in due %}<li><span class="pill {% if i.level == 'overdue' %}r-high{% elif i.level == 'due' %}r-medium{% else %}s-exited{% endif %}">{{ i.level|title }}</span> <a href="{{ i.url }}">{{ i.text }}</a></li>{% endfor %}</ul>
+  {% else %}<p class="muted">Nothing due.</p>{% endif %}</section>{% endif %}
 <section class="card"><h2>Awaiting senior management approval</h2>
   {% if pending %}<div class="tablewrap"><table><thead><tr><th>Member</th><th>PEP</th><th>Onboarded</th></tr></thead><tbody>
   {% for m in pending %}<tr><td><a href="{% url 'members:detail' m.member_no %}">{{ m.name }}</a><br><span class="mono muted">{{ m.member_no }}</span></td><td>{{ m.get_pep_display }}</td><td>{{ m.created_at|date:"d M Y H:i" }}</td></tr>{% endfor %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block title %}Large cash reports · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Weekly large cash reports</h1><a href="{% url 'monitoring:alerts' %}">Back to alerts</a></div>
+<p class="muted">Cash transactions of USD 15,000 or more (KES {{ threshold|floatformat:"0g" }} at {{ settings.usd_rate }}) are reported to the FRC every week (reg. 35), whether or not they are suspicious. Weeks run Saturday to Friday and are due on the Friday. Download the file, submit it through goAML, then record the FRC's reference here.</p>
+<section class="card"><h2>Waiting to be reported</h2>
+<div class="tablewrap"><table><thead><tr><th>Week</th><th>Transactions</th><th></th></tr></thead><tbody>
+{% for w in weeks %}<tr><td>{{ w.period_start|date:"d M" }} – {{ w.period_end|date:"d M Y" }}<br>{% if w.overdue %}<span class="pill r-high">Overdue</span>{% elif w.due_today %}<span class="pill r-medium">Due today</span>{% else %}<span class="small muted">due {{ w.period_end|date:"D d M" }}</span>{% endif %}</td>
+<td class="mono">{{ w.alerts|length }}</td>
+<td>{% if can_submit %}<a class="btn" href="{% url 'monitoring:cash_report_csv' w.period_end|date:'Y-m-d' %}">Download CSV</a>
+<form method="post" action="{% url 'monitoring:submit' w.period_end|date:'Y-m-d' %}" class="f" style="margin-top:8px">{% csrf_token %}{{ form.as_p }}<p><button class="btn primary" type="submit">Record as submitted</button></p></form>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="3" class="muted">Nothing waiting.</td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="card"><h2>Submitted</h2>
+<div class="tablewrap"><table><thead><tr><th>Week ending</th><th>Rows</th><th>FRC reference</th><th>Submitted</th></tr></thead><tbody>
+{% for r in submitted %}<tr><td>{{ r.period_end|date:"d M Y" }}</td><td class="mono">{{ r.rows }}</td><td class="mono">{{ r.frc_reference }}</td><td class="small">{{ r.submitted_at|date:"d M Y H:i" }} · {{ r.submitted_by }}{% if r.submitted_at.date > r.period_end %} · <span class="pill r-medium">Late</span>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="4" class="muted">None yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

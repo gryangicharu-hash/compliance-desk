@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}Data and jobs · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Core banking data</h1><a href="{% url 'jobs:list' %}">Scheduled jobs</a></div>
+<p class="muted">Members, loans with guarantors, and transactions come from the core banking system as CSV files, either imported here or picked up from the import folder every night. A file with any problem is rejected as a whole, so nothing is half-imported. Importing the same records again is safe.</p>
+{% if can_import %}<section class="card"><h2>Import a file</h2>
+  <form method="post" enctype="multipart/form-data" class="f">{% csrf_token %}{{ form.as_p }}
+    <p class="full"><button class="btn primary" type="submit">Check and import</button></p></form>
+  <p class="small muted">Import members first, then loans and transactions. New transactions are checked by the monitoring rules straight away; new loans update the guarantor network.</p>
+</section>{% endif %}
+<section class="card"><h2>Imports</h2>
+<div class="tablewrap"><table><thead><tr><th>When</th><th>File</th><th>Result</th><th>Rows</th></tr></thead><tbody>
+{% for b in batches %}<tr><td class="small">{{ b.imported_at|date:"d M Y H:i" }}<br>{{ b.imported_by }}</td>
+<td><a href="{% url 'corebanking:batch' b.pk %}">{{ b.source }}</a><br><span class="small muted">{{ b.get_kind_display }}{% if b.profile %} · {{ b.profile }}{% endif %}</span></td>
+<td><span class="pill {% if b.status == 'imported' %}s-active{% else %}r-high{% endif %}">{{ b.get_status_display }}</span>{% if b.errors %}<br><span class="small">{{ b.errors|length }} problem(s)</span>{% endif %}</td>
+<td class="small mono">{% if b.status == 'imported' %}{{ b.created }} new · {{ b.updated }} updated · {{ b.unchanged }} unchanged{% else %}{{ b.rows_total }}{% endif %}</td></tr>
+{% empty %}<tr><td colspan="4" class="muted">Nothing imported yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="card"><h2>Standard layouts</h2>
+<p class="small muted">The first row must hold column names. Dates as 2026-11-16 or 16/11/2026 (day first). Amounts in KES; commas are fine. Columns marked * are required.</p>
+<div class="grid">{% for label, cols in layouts %}<div><h3>{{ label }}</h3><ul class="small">{% for c, req, d in cols %}<li><span class="mono">{{ c }}</span>{% if req %} *{% endif %}{% if d %} <span class="muted">{{ d }}</span>{% endif %}</li>{% endfor %}</ul></div>{% endfor %}</div>
+</section>
+<section class="card"><h2>Column name profiles</h2>
+<p class="small muted">If your system names columns differently, save a profile once and choose it when importing.</p>
+{% if profiles %}<ul class="small">{% for p in profiles %}<li><b>{{ p.name }}</b> ({{ p.get_kind_display }}): {% for k, v in p.mapping.items %}<span class="mono">{{ k }} → {{ v }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}</li>{% endfor %}</ul>{% endif %}
+{% if can_import %}<form method="post" action="{% url 'corebanking:new_profile' %}" class="f">{% csrf_token %}{{ profile_form.as_p }}
+  <p class="full"><button class="btn" type="submit">Save profile</button></p></form>{% endif %}
+</section>
+{% endblock %}

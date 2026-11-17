@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block title %}Import · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>{{ b.source }}</h1><a href="{% url 'corebanking:imports' %}">Back to imports</a></div>
+<section class="card"><dl class="kv">
+  <dt>File type</dt><dd>{{ b.get_kind_display }}{% if b.profile %} · profile {{ b.profile }}{% endif %}</dd>
+  <dt>Result</dt><dd><span class="pill {% if b.status == 'imported' %}s-active{% else %}r-high{% endif %}">{{ b.get_status_display }}</span></dd>
+  <dt>Rows</dt><dd>{{ b.rows_total }}{% if b.status == 'imported' %}: {{ b.created }} new, {{ b.updated }} updated, {{ b.unchanged }} unchanged{% endif %}</dd>
+  <dt>Imported</dt><dd>{{ b.imported_at|date:"d M Y H:i" }} by {{ b.imported_by }}</dd>
+  <dt>File fingerprint</dt><dd class="mono">sha256 {{ b.sha256 }}</dd>
+</dl></section>
+{% if b.errors %}<section class="card"><h2>Problems found ({{ b.errors|length }}{% if b.errors|length == 200 %}+{% endif %})</h2>
+<p class="small muted">Nothing from this file was imported. Correct these rows and import the whole file again.</p>
+<ul class="small">{% for e in b.errors %}<li>{{ e }}</li>{% endfor %}</ul></section>{% endif %}
+{% endblock %}

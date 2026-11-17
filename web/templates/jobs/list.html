@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block title %}Scheduled jobs · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Scheduled jobs</h1><a href="{% url 'corebanking:imports' %}">Core banking data</a></div>
+<p class="muted">These run on the server's schedule. Every run is recorded here and in the audit trail, so an inspector can see that lists were checked and transactions monitored every day.</p>
+<section class="card"><h2>Schedule</h2>
+<div class="tablewrap"><table><thead><tr><th>Job</th><th>When</th><th>What it does</th><th>Last run</th><th></th></tr></thead><tbody>
+{% for job, when, what, last in schedule %}<tr><td class="mono">{{ job }}</td><td class="small">{{ when }}</td><td class="small">{{ what }}</td>
+<td class="small">{% if last %}<span class="pill {% if last.status == 'failed' %}r-high{% elif last.status == 'skipped' or last.status == 'running' %}r-medium{% else %}s-active{% endif %}">{{ last.get_status_display }}</span><br>{{ last.started_at|date:"d M Y H:i" }}{% else %}<span class="muted">Never</span>{% endif %}</td>
+<td>{% if can_run and job in run_now %}<form method="post" action="{% url 'jobs:run' job %}">{% csrf_token %}<button class="btn" type="submit">Run now</button></form>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="card"><h2>Recent runs</h2>
+<div class="tablewrap"><table><thead><tr><th>Started</th><th>Job</th><th>Result</th><th>Detail</th></tr></thead><tbody>
+{% for r in runs %}<tr><td class="small">{{ r.started_at|date:"d M Y H:i" }}</td><td class="mono">{{ r.job }}</td><td>{{ r.get_status_display }}</td><td class="small mono">{% if r.error %}{{ r.error }}{% else %}{{ r.summary }}{% endif %}</td></tr>
+{% empty %}<tr><td colspan="4" class="muted">No runs yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

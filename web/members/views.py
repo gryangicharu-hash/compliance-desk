@@ -32,8 +32,13 @@ def home(request):
         if row["rating"]:
             by_rating[row["rating"]] = row["n"]
     pending = Member.objects.filter(status=Status.PENDING_APPROVAL).order_by("created_at")[:10]
+    due = []
+    if request.user.has_role(*CASE_ROLES):      # front office never sees case or alert counts
+        from jobs.services import due_items
+        due = due_items()
     return render(request, "members/home.html", {
-        "total": members.count(), "by_rating": by_rating, "pending": pending,
+        "total": members.count(), "by_rating": by_rating, "pending": pending, "due": due,
+        "sees_due": request.user.has_role(*CASE_ROLES),
         "can_onboard": request.user.has_role(*CAN_ONBOARD)})
 
 
@@ -49,6 +54,19 @@ def member_list(request):
         qs = qs.filter(rating=rating)
     if status:
         qs = qs.filter(status=status)
+    from datetime import timedelta
+
+    from django.utils import timezone
+    today = timezone.localdate()
+    due, idf = request.GET.get("due", ""), request.GET.get("id", "")
+    if due == "overdue":
+        qs = qs.filter(next_review__lt=today).exclude(status=Status.EXITED)
+    elif due == "soon":
+        qs = qs.filter(next_review__gte=today, next_review__lte=today + timedelta(days=30)).exclude(status=Status.EXITED)
+    if idf == "expired":
+        qs = qs.filter(id_expiry__lt=today).exclude(status=Status.EXITED)
+    elif idf == "expiring":
+        qs = qs.filter(id_expiry__gte=today, id_expiry__lte=today + timedelta(days=60)).exclude(status=Status.EXITED)
     page = Paginator(qs.order_by("member_no"), 50).get_page(request.GET.get("page"))
     return render(request, "members/list.html", {
         "page": page, "q": q, "rating": rating, "status": status, "statuses": Status.choices,
@@ -70,8 +88,14 @@ def member_detail(request, member_no):
     if not sees_cases:      # tipping-off: never reveal a case to front office, even indirectly
         overrides = [o if "case" not in o.lower() else "Additional compliance factors (restricted)" for o in overrides]
     from cases.models import Case
+    from corebanking.models import Guarantee
+    from monitoring.models import Alert
     from screening.models import Hit
     return render(request, "members/detail.html", {
+        "loans": member.loans.prefetch_related("guarantees__guarantor"),
+        "guarantees_given": Guarantee.objects.filter(guarantor=member).select_related("loan__borrower"),
+        "network_flags": member.network_flags.all() if sees_cases else [],
+        "alerts": Alert.objects.filter(member=member).order_by("-raised_at")[:20] if sees_cases else [],
         "overrides": overrides, "sees_cases": sees_cases,
         "hits": Hit.objects.filter(member=member).select_related("member", "decided_by") if sees_cases else [],
         "cases": Case.objects.filter(member=member) if sees_cases else [],

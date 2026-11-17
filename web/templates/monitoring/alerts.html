@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block title %}Monitoring · Compliance Desk{% endblock %}
+{% block content %}
+<div class="row"><h1>Monitoring alerts</h1><a href="{% url 'monitoring:cash_reports' %}">Weekly large cash reports</a></div>
+<p class="muted">Alerts are leads, not conclusions: review each one and either record why no action is needed or open a case. Opening a case starts the 2-day STR clock (reg. 33). Large cash threshold: KES {{ settings.large_cash_kes|floatformat:"0g" }} (USD 15,000 at {{ settings.usd_rate }}).</p>
+<section class="card"><h2>To review ({{ open|length }})</h2>
+<div class="tablewrap"><table><thead><tr><th>Raised</th><th>Member</th><th>Rule</th><th>What was seen</th></tr></thead><tbody>
+{% for a in open %}<tr><td class="small">{{ a.raised_at|date:"d M Y H:i" }}</td><td><a href="{% url 'members:detail' a.member.member_no %}">{{ a.member.name }}</a></td>
+<td><a href="{% url 'monitoring:alert' a.pk %}">{{ a.get_rule_display }}</a></td><td class="small">{{ a.description }}</td></tr>
+{% empty %}<tr><td colspan="4" class="muted">Nothing to review.</td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="card"><h2>Recently decided</h2>
+<div class="tablewrap"><table><thead><tr><th>Decided</th><th>Member</th><th>Rule</th><th>Decision</th></tr></thead><tbody>
+{% for a in decided %}<tr><td class="small">{{ a.decided_at|date:"d M Y H:i" }}<br>{{ a.decided_by }}</td><td>{{ a.member.name }}</td><td><a href="{% url 'monitoring:alert' a.pk %}">{{ a.get_rule_display }}</a></td>
+<td class="small">{{ a.get_status_display }}{% if a.case %} · <a class="mono" href="{% url 'cases:detail' a.case.ref %}">{{ a.case.ref }}</a>{% endif %}<br>{{ a.note }}</td></tr>
+{% empty %}<tr><td colspan="4" class="muted">None yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}
