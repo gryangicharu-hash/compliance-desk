@@ -86,7 +86,7 @@ class AuditTests(StaffTestCase):
             self.assertEqual((Engagement.objects.count(), Finding.objects.count()), (0, 0))
         self.as_user(self.co)
         page = self.client.get(self.ref())
-        self.assertContains(page, "Incomplete KYC")
+        self.assertContains(page, "incomplete KYC files")
         self.assertNotContains(page, "Run all 17 tests")
         self.client.post(self.ref("respond", f.ref), {"response": "KYC remediation drive in branches",
                                                       "owner": "Head of operations", "due_on": "2026-12-31"})

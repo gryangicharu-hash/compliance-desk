@@ -113,9 +113,11 @@ def engagement_list(request):
 def engagement(request, ref):
     e = get_object_or_404(Engagement.objects.select_related("lead_auditor"), ref=ref)
     findings = list(e.findings.select_related("response", "response__responded_by"))
+    for f in findings:      # one form per finding, with distinct element ids
+        f.response_form = ResponseForm(auto_id=f"r{f.ref}_%s")
+        f.status_form = StatusForm(auto_id=f"s{f.ref}_%s")
     ctx = {"e": e, "findings": sorted(findings, key=lambda f: (f.severity_rank, f.ref)),
-           "is_auditor": _is_auditor(request), "is_management": request.user.has_role(*MANAGEMENT),
-           "response_form": ResponseForm(), "status_form": StatusForm()}
+           "is_auditor": _is_auditor(request), "is_management": request.user.has_role(*MANAGEMENT)}
     if ctx["is_auditor"]:
         run = e.runs.select_related("run_by").first()
         ctx.update({

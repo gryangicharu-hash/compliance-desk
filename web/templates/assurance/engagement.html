@@ -48,8 +48,8 @@
   <p class="small"><b>Condition.</b> {{ f.condition }}</p><p class="small"><b>Recommendation.</b> {{ f.recommendation }}</p>
   {% if f.closure_evidence %}<p class="small"><b>Closed {{ f.closed_on|date:"d M Y" }}.</b> {{ f.closure_evidence }}</p>{% endif %}
   {% if f.response %}<p class="small"><b>Management response</b> ({{ f.response.responded_by }}, {{ f.response.responded_at|date:"d M Y" }}): {{ f.response.response }} Owner: {{ f.response.owner }}; agreed date {{ f.response.due_on|date:"d M Y" }}.</p>{% endif %}
-  {% if is_management and f.status != 'closed' %}<form method="post" action="{% url 'assurance:respond' e.ref f.ref %}" class="f">{% csrf_token %}{{ response_form.as_p }}<p class="full"><button class="btn" type="submit">{% if f.response %}Update response{% else %}Record response{% endif %}</button></p></form>{% endif %}
-  {% if is_auditor and e.status != 'closed' %}<form method="post" action="{% url 'assurance:finding_status' e.ref f.ref %}" class="f">{% csrf_token %}{{ status_form.as_p }}<p class="full"><button class="btn" type="submit">Set status</button></p></form>{% endif %}
+  {% if is_management and f.status != 'closed' %}<form method="post" action="{% url 'assurance:respond' e.ref f.ref %}" class="f">{% csrf_token %}{{ f.response_form.as_p }}<p class="full"><button class="btn" type="submit">{% if f.response %}Update response{% else %}Record response{% endif %}</button></p></form>{% endif %}
+  {% if is_auditor and e.status != 'closed' %}<form method="post" action="{% url 'assurance:finding_status' e.ref f.ref %}" class="f">{% csrf_token %}{{ f.status_form.as_p }}<p class="full"><button class="btn" type="submit">Set status</button></p></form>{% endif %}
 </div>{% empty %}<p class="muted small">No findings.</p>{% endfor %}
 {% if is_auditor and e.status != 'closed' %}<details style="margin-top:12px"><summary>Raise a finding from manual testing</summary>
 <form method="post" action="{% url 'assurance:add_finding' e.ref %}" class="f">{% csrf_token %}{{ finding_form.as_p }}<p class="full"><button class="btn" type="submit">Raise finding</button></p></form></details>{% endif %}
