@@ -9,6 +9,7 @@ from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.security import db_role
 from cases.services import open_case
 from corebanking.tests import MEMBERS
 from members.models import Member
@@ -70,8 +71,9 @@ class JobTests(StaffTestCase):
         self.co.save()
         self.onboard()
         m = Member.objects.get()
-        open_case(m, user=self.co, case_type="unusual_activity", reason="Cash pattern",
-                  suspicion_formed_at=timezone.now() - timedelta(days=3))
+        with db_role("compliance_officer"):
+            open_case(m, user=self.co, case_type="unusual_activity", reason="Cash pattern",
+                      suspicion_formed_at=timezone.now() - timedelta(days=3))
         self.run_cmd("send_reminders")
         self.assertEqual(len(mail.outbox), 1)
         body = mail.outbox[0].body

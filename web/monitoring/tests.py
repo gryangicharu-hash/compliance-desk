@@ -38,7 +38,7 @@ class MonitoringTests(ImportTestCase):
 
     def alerts(self, **kw):
         with db_role("compliance_officer"):
-            return list(Alert.objects.filter(**kw).order_by("rule"))
+            return list(Alert.objects.filter(**kw).select_related("member", "case").order_by("rule"))
 
     def test_import_runs_rules_once(self):
         self.assertEqual(self.batch.created, 5, self.batch.errors)
