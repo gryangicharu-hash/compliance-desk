@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Restore a backup into a NEW database, then check it. Never restores over a live database.
 #   restore.sh <backup file> <new database name>
-# Connection as for backup.sh (postgres superuser). After restoring, the script runs
+# Connection as for backup.sh (postgres superuser). Run it where pg_restore is the same
+# version as the server, e.g. inside the database container. After restoring, the script runs
 # `manage.py verify_database` against the new database if run from the web/ folder.
 set -euo pipefail
 file="${1:?backup file}"

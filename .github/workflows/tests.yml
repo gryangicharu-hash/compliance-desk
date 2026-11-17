@@ -104,8 +104,15 @@ jobs:
           python manage.py createcachetable
           python manage.py seed_demo --yes-this-is-a-demo --members 60
           python manage.py runjobs nightly
-          PGUSER=postgres PGPASSWORD=postgres BACKUP_DIR=/tmp/backups bash ../deploy/backup.sh
-          PGUSER=postgres PGPASSWORD=postgres APP_DB_PASSWORD=ci-only bash ../deploy/restore.sh "$(ls /tmp/backups/*.dump)" compliance_restored
+          # As in production, pg_dump and pg_restore run inside the database container, so
+          # their version always matches the server's.
+          cid="${{ job.services.postgres.id }}"
+          docker cp ../deploy/backup.sh "$cid":/usr/local/bin/compliance-backup
+          docker cp ../deploy/restore.sh "$cid":/usr/local/bin/compliance-restore
+          docker exec -e PGUSER=postgres -e BACKUP_DIR=/backups "$cid" bash /usr/local/bin/compliance-backup
+          dump="$(docker exec "$cid" sh -c 'ls /backups/*.dump')"
+          docker exec -e PGUSER=postgres -w / "$cid" bash /usr/local/bin/compliance-restore "$dump" compliance_restored
+          PGDATABASE=compliance_restored python manage.py verify_database
       - name: Migrations must be committed
         run: |
           git status --porcelain -- '*/migrations/*.py'
