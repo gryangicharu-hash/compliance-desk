@@ -20,6 +20,16 @@
   with FRC reference, closing with reasons, STR XML download, row-level security so front
   office cannot see cases even directly in the database (tipping-off). 32 web tests.
 
+- v0.5.0-alpha (web stage 3): core banking imports (members, loans with guarantors,
+  transactions) as CSV in standard layouts or with saved column-name profiles; all-or-nothing
+  with row errors, safe to re-send. Guarantor network screen (circular guarantees,
+  concentration, links to blocked/PEP/high-risk/unresolved-match members) feeding the risk
+  rating. Monitoring alerts from the six rules with review decisions or escalation to a case,
+  hidden from front office by row-level security. Weekly large cash report (CSV, FRC reference
+  recorded). Scheduled jobs (daily UN list download, nightly import, guarantor refresh,
+  monitoring, reminder email) with a run log, and a "Needs attention" list on the overview.
+  55 web tests. See docs/OPERATIONS.md.
+
 ## Next: web application, remaining stages
 
 Built on Django with the engine as a library.
@@ -29,10 +39,10 @@ Built on Django with the engine as a library.
 2. Logins with two-factor authentication; roles: front office, compliance officer,
    senior management, auditor, administrator. Set `app.user_role` on every
    database connection for row-level security.
-3. Remaining screens from the prototype: overview, guarantors, reviews, reports, risk settings.
-4. Scheduled jobs: daily UN list download and re-screen; nightly transaction import
-   and monitoring; weekly cash report reminder; review and ID-expiry reminders.
-5. Imports: member and transaction files from the main core banking systems used by pilot SACCOs.
+3. Remaining screens from the prototype: periodic review workflow, risk settings approval.
+4. Import profiles for the core banking systems pilot SACCOs actually use (built from
+   their real export files).
+5. Weekly cash report: confirm the week and nil-return reading with the FRC.
 6. Second approval for closing cases and lowering ratings.
 7. Board report screen from `reports.board_summary()`.
 8. Audit workspace for the auditor role: engagements, test runs, samples, programme, findings, report.
