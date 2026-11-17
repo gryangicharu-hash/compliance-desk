@@ -47,7 +47,8 @@ def sync_member(member: Member) -> bool:
         previous = state.level
         state.level, state.since = level, timezone.now()
         state.save(update_fields=["level", "since"])
-    record("system", "restriction.changed", member.member_no, {"from": previous, "to": level})
+    # The member's status change is already in the audit trail; the instruction itself is
+    # recorded there when it is sent (or listed in an exported file).
     # A change not yet sent and only seconds old (e.g. 'awaiting approval' then 'hold' while
     # one member is onboarded) is replaced rather than followed, so core banking gets one
     # clear instruction. Anything already sent is never rewritten.
@@ -103,6 +104,8 @@ def deliver_pending(limit: int | None = None, quiet: bool = False) -> dict:
             break
         ch.delivered_at, ch.last_error = timezone.now(), ""
         ch.save(update_fields=["attempts", "delivered_at", "last_error"])
+        record("system", "restriction.delivered", ch.member.member_no,
+               {"change": ch.pk, "from": ch.previous, "to": ch.level})
         sent += 1
     return {"sent": sent, "failed": failed,
             "waiting": RestrictionChange.objects.filter(delivered_at__isnull=True).count()}
